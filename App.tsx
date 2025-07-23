@@ -526,75 +526,95 @@ Question: "${message}"
                 </div>
 
                 {viewMode === 'workflow' && (
-                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                        <div className="xl:col-span-2">
-                             <WorkflowVisualizer 
-                                nodes={activeProject.workflow.nodes} 
-                                edges={activeProject.workflow.edges}
-                                activeNodeId={activeProject.activeNodeId}
-                                onNodeClick={handleSetActiveNode}
-                                t={t}
-                            />
-                        </div>
-                        <div className="flex flex-col gap-4">
-                           <EdgeCaseSimulator onSimulate={handleSimulateEdgeCase} isWorkflowRunning={activeProject.workflowStatus === WorkflowStatus.RUNNING} t={t}/>
-                           {activeNode && (
-                                <div className="bg-slate-800/50 rounded-lg border border-slate-700 flex-grow">
-                                <DocumentViewer 
-                                    node={activeNode}
-                                    document={activeDocument}
-                                    streamingContent={activeProject.streamingContent}
-                                    streamingSource={activeProject.streamingSource}
-                                    isStreaming={activeProject.isStreaming}
-                                    onApprove={handleApproval}
-                                    onReject={handleRejection}
+                    <div className="h-[calc(100vh-12rem)]">
+                        <ResizableLayout
+                            leftPanel={
+                                <EnhancedWorkflowVisualizer 
+                                    nodes={activeProject.workflow.nodes} 
+                                    edges={activeProject.workflow.edges}
+                                    activeNodeId={activeProject.activeNodeId}
+                                    onNodeClick={handleSetActiveNode}
                                     t={t}
+                                    className="h-full"
                                 />
+                            }
+                            rightPanel={
+                                <div className="h-full flex flex-col gap-4 p-4">
+                                    <EdgeCaseSimulator 
+                                        onSimulate={handleSimulateEdgeCase} 
+                                        isWorkflowRunning={activeProject.workflowStatus === WorkflowStatus.RUNNING} 
+                                        t={t}
+                                    />
+                                    {activeNode && (
+                                        <div className="flex-1 overflow-hidden">
+                                            <EnhancedDocumentViewer 
+                                                node={activeNode}
+                                                document={activeDocument}
+                                                streamingContent={activeProject.streamingContent}
+                                                streamingSource={activeProject.streamingSource}
+                                                isStreaming={activeProject.isStreaming}
+                                                onApprove={handleApproval}
+                                                onReject={handleRejection}
+                                                t={t}
+                                                className="h-full"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
-                           )}
-                        </div>
+                            }
+                            defaultLeftWidth={70}
+                            minLeftWidth={60}
+                            maxLeftWidth={80}
+                        />
                     </div>
                 )}
                 {viewMode === 'explorer' && (
-                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-12rem)]">
-                        <div className="lg:col-span-1 h-full">
-                            <DocumentExplorer
-                                workflow={activeProject.workflow}
-                                documents={activeProject.documents}
-                                onSelectNode={handleSetActiveNode}
-                                activeNodeId={activeProject.activeNodeId}
-                                t={t}
-                            />
-                        </div>
-                        <div className="lg:col-span-2 h-full bg-slate-800/50 rounded-lg border border-slate-700 flex flex-col">
-                            {activeNode && activeDocument ? (
-                                <>
+                    <div className="h-[calc(100vh-12rem)]">
+                        <ResizableLayout
+                            leftPanel={
+                                <EnhancedDocumentExplorer 
+                                    nodes={activeProject.workflow.nodes}
+                                    edges={activeProject.workflow.edges}
+                                    onSelectNode={handleSetActiveNode}
+                                    activeNodeId={activeProject.activeNodeId}
+                                    t={t}
+                                    className="h-full"
+                                />
+                            }
+                            rightPanel={
+                                <div className="h-full flex flex-col">
                                     <div className="flex-1 overflow-hidden">
-                                        <DocumentViewer 
-                                            node={activeNode}
-                                            document={activeDocument}
-                                            streamingContent={activeProject.streamingContent}
-                                            streamingSource={activeProject.streamingSource}
-                                            isStreaming={false} // Don't show workflow streaming here
-                                            onApprove={handleApproval}
-                                            onReject={handleRejection}
+                                        <EnhancedDocumentManager 
+                                            nodes={activeProject.workflow.nodes}
+                                            onSelectNode={handleSetActiveNode}
                                             t={t}
+                                            className="h-full"
                                         />
                                     </div>
-                                    <div className="flex-1 overflow-hidden border-t border-slate-700">
-                                        <ChatPanel 
-                                            chatHistory={activeDocument.chatHistory}
-                                            onSendMessage={(message) => handleSendMessage(activeNode.id, message)}
-                                            isStreaming={activeProject.isStreaming && activeProject.streamingSource === 'chat'}
-                                            streamingContent={activeProject.streamingContent}
-                                            t={t}
-                                        />
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="p-8 text-center text-slate-400 flex items-center justify-center h-full">{t.selectNodePrompt}</div>
-                            )}
-                        </div>
+                                </div>
+                            }
+                            bottomPanel={
+                                activeNode && (
+                                    <EnhancedDocumentViewer 
+                                        node={activeNode}
+                                        document={activeDocument}
+                                        streamingContent={activeProject.streamingContent}
+                                        streamingSource={activeProject.streamingSource}
+                                        isStreaming={activeProject.isStreaming}
+                                        onApprove={handleApproval}
+                                        onReject={handleRejection}
+                                        t={t}
+                                        className="h-full"
+                                    />
+                                )
+                            }
+                            defaultLeftWidth={40}
+                            minLeftWidth={30}
+                            maxLeftWidth={60}
+                            defaultBottomHeight={40}
+                            minBottomHeight={30}
+                            maxBottomHeight={60}
+                        />
                     </div>
                 )}
             </div>
