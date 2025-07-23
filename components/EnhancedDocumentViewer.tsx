@@ -24,7 +24,6 @@ interface EnhancedDocumentViewerProps {
   onReject: (nodeId: string, stage: 'outline' | 'content', feedback: string) => void;
   t: any;
   className?: string;
-  geminiService: any;
 }
 
 const ReviewControls: React.FC<{ 
@@ -163,11 +162,10 @@ const ContentSection: React.FC<{
                 />
               ) : isMermaidContent ? (
                 <MermaidDiagramRenderer 
-                mermaidCode={content}
-                title={title}
-                className="mb-4"
-                geminiService={geminiService}
-              />
+                  mermaidCode={content}
+                  title={title}
+                  className="mb-4"
+                />
               ) : isMarkdownContent ? (
                 <div className="bg-slate-900/50 rounded-md p-4">
                   <MarkdownRenderer 

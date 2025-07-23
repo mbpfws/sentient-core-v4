@@ -9,15 +9,13 @@ interface MermaidDiagramRendererProps {
   title: string;
   onError?: (error: string) => void;
   className?: string;
-  geminiService?: any;
 }
 
 const MermaidDiagramRenderer: React.FC<MermaidDiagramRendererProps> = ({
   mermaidCode,
   title,
   onError,
-  className = "",
-  geminiService
+  className = ""
 }) => {
   const [isRendered, setIsRendered] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,52 +98,31 @@ const MermaidDiagramRenderer: React.FC<MermaidDiagramRendererProps> = ({
       setIsRendered(false);
 
       for (let i = 0; i < parsedCodes.length; i++) {
-        let currentCode = parsedCodes[i];
-        let attempts = 0;
-        const maxAttempts = 2;
-
         const ref = mermaidRefs.current[i];
         if (!ref) continue;
 
-        while (attempts <= maxAttempts) {
-          try {
-            ref.innerHTML = '';
-            const diagramId = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${i}`;
-            const { svg } = await mermaid.render(diagramId, currentCode);
-            ref.innerHTML = svg;
-            break;
-          } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : 'Failed to render Mermaid diagram';
-            attempts++;
-
-            if (attempts > maxAttempts || !geminiService) {
-              setError(errorMsg);
-              onError?.(errorMsg);
-              ref.innerHTML = `
-                <div class="text-red-400 p-4 text-center" style="max-height: 200px; overflow: hidden;">
-                  <div class="font-semibold mb-2">Diagram Rendering Error</div>
-                  <div class="text-sm text-red-300">${errorMsg}</div>
-                </div>
-              `;
-              break;
-            } else {
-              // Regenerate using AI
-              const prompt = `Fix this Mermaid diagram code based on the error: "${errorMsg}". Make sure it's valid Mermaid syntax. Original code: \n${currentCode}`;
-              try {
-                currentCode = await geminiService.generateContent(prompt);
-              } catch (regenErr) {
-                setError('Failed to regenerate Mermaid code: ' + (regenErr instanceof Error ? regenErr.message : 'Unknown error'));
-                break;
-              }
-            }
-          }
+        try {
+          ref.innerHTML = '';
+          const diagramId = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${i}`;
+          const { svg } = await mermaid.render(diagramId, parsedCodes[i]);
+          ref.innerHTML = svg;
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : 'Failed to render Mermaid diagram';
+          setError(errorMsg);
+          onError?.(errorMsg);
+          ref.innerHTML = `
+            <div class="text-red-400 p-4 text-center">
+              <div class="font-semibold mb-2">Diagram Rendering Error</div>
+              <div class="text-sm text-red-300">${errorMsg}</div>
+            </div>
+          `;
         }
       }
       setIsRendered(true);
     };
 
     renderDiagrams();
-  }, [parsedCodes, onError, geminiService]);
+  }, [parsedCodes, onError]);
 
   // Modify download functions to handle multiple diagrams if needed
   const handleDownloadSvg = (index: number) => {
