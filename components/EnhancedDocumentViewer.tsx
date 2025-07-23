@@ -162,8 +162,22 @@ const ContentSection: React.FC<{
                 />
               ) : isMermaidContent ? (
                 <MermaidDiagramRenderer 
-                  mermaidCode={content}
-                  title={title}
+                  document={{
+                    id: `${nodeId}-${contentType}`,
+                    nodeId: nodeId,
+                    type: 'final' as const,
+                    content: content,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    status: 'completed' as const,
+                    metadata: {
+                      nodeType: 'Architectural Visualizer' as any,
+                      tags: ['mermaid', 'diagram']
+                    }
+                  }}
+                  nodeId={nodeId}
+                  onError={(error) => console.error('Mermaid error:', error)}
+                  onContentUpdate={(newContent) => console.log('Content updated:', newContent)}
                   className="mb-4"
                 />
               ) : isMarkdownContent ? (

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SvgMockupRenderer } from './SvgMockupRenderer';
-import { MermaidDiagramRenderer } from './MermaidDiagramRenderer';
+import MermaidDiagramRenderer from './MermaidDiagramRenderer';
 import { Document, NodeType } from '../types';
 
 const NodeTester: React.FC = () => {
@@ -227,6 +227,8 @@ const NodeTester: React.FC = () => {
             <MermaidDiagramRenderer 
               document={mockMermaidDocument}
               nodeId="n8"
+              onError={(error) => console.error('Mermaid error:', error)}
+              onContentUpdate={(newContent) => console.log('Content updated:', newContent)}
             />
           </div>
         </div>
