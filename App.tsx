@@ -7,14 +7,19 @@ import { locales } from './locales';
 import Header from './components/Header';
 import ProjectInput from './components/ProjectInput';
 import WorkflowVisualizer from './components/WorkflowVisualizer';
+import EnhancedWorkflowVisualizer from './components/EnhancedWorkflowVisualizer';
 import DocumentViewer from './components/DocumentViewer';
+import EnhancedDocumentViewer from './components/EnhancedDocumentViewer';
 import EdgeCaseSimulator from './components/EdgeCaseSimulator';
 import ProjectManager from './components/ProjectManager';
 import DocumentExplorer from './components/DocumentExplorer';
+import EnhancedDocumentExplorer from './components/EnhancedDocumentExplorer';
+import EnhancedDocumentManager from './components/EnhancedDocumentManager';
 import ChatPanel from './components/ChatPanel';
 import NodeTester from './components/NodeTester';
 import { LayoutGridIcon, NetworkIcon } from './components/icons';
 import ApiKeyModal from './components/ApiKeyModal';
+import { ResizableLayout } from './components/ResizableLayout';
 
 type ProjectAction =
     | { type: 'START_WORKFLOW'; payload: { description: string } }
