@@ -9,14 +9,14 @@
 ### 1. Prerequisites
 - Node.js 18+ installed
 - Vercel CLI installed: `npm i -g vercel`
-- Google Gemini API key
 
-### 2. Environment Variables
-Set up the following environment variable in your Vercel dashboard:
+### 2. Client-Side API Key Configuration
+**Important**: This application uses **client-side API keys only**. Users provide their own Google Gemini API keys through the application interface.
 
-```
-GEMINI_API_KEY=your_actual_gemini_api_key_here
-```
+- **No server-side environment variables needed**
+- **No API keys stored on the server**
+- **Users enter their own API keys in the browser**
+- **API keys are stored locally in browser localStorage**
 
 ### 3. Deploy Commands
 
@@ -34,7 +34,7 @@ vercel --prod
 
 #### Option B: Using Vercel Dashboard
 1. Connect your GitHub repository to Vercel
-2. Set the environment variable `GEMINI_API_KEY` in the Vercel dashboard
+2. **No environment variables needed** - the app handles API keys client-side
 3. Deploy automatically on push to main branch
 
 ### 4. Build Configuration
@@ -43,21 +43,32 @@ The project is configured with:
 - **Build Command**: `npm run build`
 - **Output Directory**: `dist`
 - **Node.js Version**: 18.x
+- **Client-Side Only**: No server-side API calls
 
 ### 5. Features Included
 - ✅ Single Page Application (SPA) routing
-- ✅ Environment variable configuration
+- ✅ Client-side API key management
 - ✅ Optimized build with code splitting
 - ✅ React 19 with TypeScript support
 - ✅ Mermaid diagram rendering
 - ✅ SVG mockup generation
 - ✅ Multi-agent RAG system interface
+- ✅ Secure local storage for API keys
 
 ### 6. Post-Deployment
 After deployment, your application will be available at:
 `https://your-project-name.vercel.app`
 
-### 7. Troubleshooting
-- Ensure all environment variables are set in Vercel dashboard
-- Check build logs in Vercel for any deployment issues
-- Verify that the Gemini API key is valid and has proper permissions
+**First-time users will be prompted to enter their Google Gemini API key**, which will be stored locally in their browser.
+
+### 7. Security Features
+- ✅ No API keys stored on server
+- ✅ Client-side only API key handling
+- ✅ Local browser storage for user keys
+- ✅ No server-side environment variables needed
+- ✅ Each user provides their own API key
+
+### 8. Troubleshooting
+- If users can't access AI features, they need to provide a valid Gemini API key
+- API keys are stored locally - clearing browser data will require re-entering the key
+- No server-side configuration needed for API access
