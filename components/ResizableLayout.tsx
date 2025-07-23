@@ -202,3 +202,4 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({
 };
 
 export default ResizableLayout;
+export { ResizableLayout };
