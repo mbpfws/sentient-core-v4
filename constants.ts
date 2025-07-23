@@ -21,7 +21,7 @@ export const INITIAL_WORKFLOW_GRAPH: WorkflowGraph = {
       isHumanInLoop: false,
       position: { x: 25, y: 250 },
       details: "Analyzes the user's initial idea to establish a baseline understanding of complexity and core features.",
-      taskPrompt: (projectDesc, _s, _o, lang) => `Analyze the following project description. Identify the core problem, the main user base, and the key features. Determine a complexity score (Low, Medium, High). Provide a concise, one-paragraph summary. Project: "${projectDesc}". The response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
+      taskPrompt: (projectDesc, _s, _o, lang) => `Analyze the following project description. Identify the core problem, the main user base, and the key features. Determine a complexity score (Low, Medium, High). Output in JSON format with keys: problem, users, features, complexity, summary. Project: "${projectDesc}". The response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
       refinePrompt: defaultRefinePrompt,
     },
     {
@@ -32,8 +32,13 @@ export const INITIAL_WORKFLOW_GRAPH: WorkflowGraph = {
       isHumanInLoop: true,
       position: { x: 250, y: 50 },
       details: 'Generates a high-level executive summary covering objectives, scope, and strategic roadmap.',
-      outlinePrompt: (projectDesc, synthesis, lang) => `You are a Senior Project Manager. Create a detailed outline for a one-page Executive Summary for a software project. The project is: "${projectDesc}". The initial analysis is: "${synthesis}". The outline should have clear sections for Project Vision, Problem Statement, Proposed Solution, Key Objectives (SMART goals), Scope (In-Scope/Out-of-Scope), and a high-level Strategic Roadmap (MVP, Phase 2). Format as a markdown list. The response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
-      taskPrompt: (_pd, synthesis, outline, lang) => `Using the following outline and initial analysis, write a professional, comprehensive Executive Summary. The summary must be detailed, persuasive, and suitable for project stakeholders. Initial Analysis: "${synthesis}".\n\nApproved Outline:\n${outline}\n\nThe response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
+      outlinePrompt: (projectDesc, synthesis, lang) => `You are a Senior Project Manager. Create a detailed outline for a one-page Executive Summary for a software project. The project is: "${projectDesc}". The initial analysis is: "${synthesis}". The outline should have clear sections for Project Vision, Problem Statement, Proposed Solution, Key Objectives (SMART goals), Scope (In-Scope/Out-of-Scope), and a high-level Strategic Roadmap (MVP, Phase 2). Output in JSON format with section keys. The response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
+      taskPrompt: (_pd, synthesis, outline, lang) => `Using the following outline and initial analysis, write a professional, comprehensive Executive Summary in markdown format. The summary must be detailed, persuasive, and suitable for project stakeholders. Include metadata tags for RAG optimization. Initial Analysis: "${synthesis}".
+
+Approved Outline:
+${outline}
+
+The response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
       refinePrompt: defaultRefinePrompt,
     },
     {
@@ -45,8 +50,8 @@ export const INITIAL_WORKFLOW_GRAPH: WorkflowGraph = {
       useSearch: true,
       position: { x: 250, y: 450 },
       details: 'Recommends a future-proof tech stack using Google Search, focusing on trends for 2025.',
-      outlinePrompt: (projectDesc, synthesis, lang) => `You are a Chief Technology Officer. Create an outline for a Technology Stack Recommendation document for the project: "${projectDesc}". The initial analysis is: "${synthesis}". The outline should cover: Frontend Framework, Backend Framework/Language, Database (SQL/NoSQL), Authentication Service, Deployment/Hosting Platform, and AI/ML Integration (if applicable). Use Google Search to find modern, scalable technologies suitable for a 2025 launch. The response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
-      taskPrompt: (_pd, synthesis, outline, lang) => `Based on the project analysis ("${synthesis}") and the approved outline below, generate a detailed Technology Stack Recommendation document. For each item in the outline, provide a specific technology choice (e.g., Next.js, FastAPI, PostgreSQL, NextAuth.js, Vercel) and write a strong, data-backed rationale for why it's the best fit for this project, considering scalability, performance, and developer ecosystem. Use the latest information from your search results.\n\nApproved Outline:\n${outline}\n\nThe response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
+      outlinePrompt: (projectDesc, synthesis, lang) => `You are a Chief Technology Officer. Create an outline for a Technology Stack Recommendation document for the project: "${projectDesc}". The initial analysis is: "${synthesis}". The outline should cover: Frontend Framework, Backend Framework/Language, Database (SQL/NoSQL), Authentication Service, Deployment/Hosting Platform, and AI/ML Integration (if applicable). Output in JSON format with section keys. Use Google Search to find modern, scalable technologies suitable for a 2025 launch. The response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
+      taskPrompt: (_pd, synthesis, outline, lang) => `Based on the project analysis ("${synthesis}") and the approved outline below, generate a detailed Technology Stack Recommendation document in markdown format with metadata tags. For each item in the outline, provide a specific technology choice (e.g., Next.js, FastAPI, PostgreSQL, NextAuth.js, Vercel) and write a strong, data-backed rationale for why it's the best fit for this project, considering scalability, performance, and developer ecosystem. Use the latest information from your search results.\n\nApproved Outline:\n${outline}\n\nThe response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
       refinePrompt: defaultRefinePrompt,
     },
     {
@@ -67,8 +72,8 @@ export const INITIAL_WORKFLOW_GRAPH: WorkflowGraph = {
       isHumanInLoop: true,
       position: { x: 700, y: 250 },
       details: 'Designs the high-level system architecture and generates a Mermaid diagram for visualization.',
-      outlinePrompt: (projectDesc, synthesis, lang) => `You are a Lead Solutions Architect. Based on this design brief: "${synthesis}", create an outline for a System Architecture document for the project: "${projectDesc}". The outline must include sections for: Core Components (e.g., Frontend App, API Gateway, Services), Data Flow, Authentication Strategy, and a plan for a MermaidJS diagram to visualize the components. The response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
-      taskPrompt: (_pd, synthesis, outline, lang) => `Using the design brief ("${synthesis}") and the approved outline, write a detailed System Architecture document. Describe each component's responsibility and its interactions. After the description, provide a valid MermaidJS graph diagram code block (using \`\`\`mermaid) that visually represents the described architecture.\n\nApproved Outline:\n${outline}\n\nThe response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
+      outlinePrompt: (projectDesc, synthesis, lang) => `You are a Lead Solutions Architect. Based on this design brief: "${synthesis}", create an outline for a System Architecture document for the project: "${projectDesc}". The outline must include sections for: Core Components (e.g., Frontend App, API Gateway, Services), Data Flow, Authentication Strategy, and a plan for a MermaidJS diagram to visualize the components. Output in JSON format. The response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
+      taskPrompt: (_pd, synthesis, outline, lang) => `Using the design brief ("${synthesis}") and the approved outline, write a detailed System Architecture document in markdown with metadata. Describe each component's responsibility and its interactions. After the description, provide a valid MermaidJS graph diagram code block (using \`\`\`mermaid) that visually represents the described architecture.\n\nApproved Outline:\n${outline}\n\nThe response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
       refinePrompt: defaultRefinePrompt,
     },
     {
@@ -127,10 +132,38 @@ export const INITIAL_WORKFLOW_GRAPH: WorkflowGraph = {
       isHumanInLoop: false,
       position: { x: 1400, y: 400 },
       details: 'Compiles all generated artifacts into a single, comprehensive project definition report.',
-      taskPrompt: (projectDesc, _s, prevOutputs, lang) => `Compile a comprehensive final report for project "${projectDesc}". The report should be well-structured and formatted in Markdown. Include the following sections, using the provided content. If a document is missing, state that it was not generated.\n\n# Project Definition: ${projectDesc}\n\n## 1. Executive Summary\n${prevOutputs['n2'] || 'Not generated.'}\n\n## 2. Technology Stack Recommendation\n${prevOutputs['n3'] || 'Not generated.'}\n\n## 3. System Architecture\n${prevOutputs['n4'] || 'Not generated.'}\n\n## 4. Database Schema (SQL DDL)\n${prevOutputs['n5'] || 'Not generated.'}\n\n## 5. API Design (OpenAPI Spec)\n${prevOutputs['n6'] || 'Not generated.'}\n\n## 6. Front-end Mockup Interfaces\n${prevOutputs['n7'] || 'Not generated.'}\n\n## 7. Architectural Visualizations\n${prevOutputs['n8'] || 'Not generated.'}\n\n---\n\n*This report was auto-generated by the Autonomous App Dev System.* The response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
+      taskPrompt: (projectDesc, _s, prevOutputs, lang) => `Compile a comprehensive final report for project "${projectDesc}". The report should be well-structured and formatted in Markdown. Include the following sections, using the provided content. If a document is missing, state that it was not generated.\n\n# Project Definition: ${projectDesc}\n\n## 1. Executive Summary\n${prevOutputs['n2'] || 'Not generated.'}\n\n## 2. Technology Stack Recommendation\n${prevOutputs['n3'] || 'Not generated.'}\n\n## 3. System Architecture\n${prevOutputs['n4'] || 'Not generated.'}\n\n## 4. Database Schema (SQL DDL)\n${prevOutputs['n5'] || 'Not generated.'}\n\n## 5. API Design (OpenAPI Spec)\n${prevOutputs['n6'] || 'Not generated.'}\n\n## 6. Front-end Mockup Interfaces\n${prevOutputs['n7'] || 'Not generated.'}\n\n## 7. Architectural Visualizations\n${prevOutputs['n8'] || 'Not generated.'}\n\n## 8. Security & Authentication Design\n${prevOutputs['n10'] || 'Not generated.'}\n\n## 9. Metadata & Ontologies Specification\n${prevOutputs['n11'] || 'Not generated.'}\n\n---\n\n*This report was auto-generated by the Autonomous App Dev System.* The response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
+    },
+    {
+      id: 'n10',
+      label: 'Security & Authentication',
+      nodeType: NodeType.TASK,
+      status: NodeStatus.PENDING,
+      isHumanInLoop: true,
+      position: { x: 1200, y: 200 },
+      details: 'Designs security measures and authentication system.',
+      outlinePrompt: (projectDesc, synthesis, lang) => `Create outline for security and auth based on "${synthesis}". Output in JSON format with section keys. Project: "${projectDesc}". The response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
+      taskPrompt: (_pd, synthesis, outline, lang) => `Generate security design in markdown format with metadata tags. Based on "${synthesis}" and outline: ${outline}. The response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
+      refinePrompt: defaultRefinePrompt,
+    },
+    {
+      id: 'n11',
+      label: 'Metadata & Ontologies',
+      nodeType: NodeType.TASK,
+      status: NodeStatus.PENDING,
+      isHumanInLoop: true,
+      position: { x: 1200, y: 300 },
+      details: 'Defines metadata standards and ontologies for RAG optimization.',
+      outlinePrompt: (projectDesc, synthesis, lang) => `Create outline for metadata and ontologies based on "${synthesis}". Output in JSON format. Project: "${projectDesc}". The response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
+      taskPrompt: (_pd, synthesis, outline, lang) => `Generate metadata spec in YAML format with ontology definitions. Based on "${synthesis}" and outline: ${outline}. The response must be in ${lang === 'vi' ? 'Vietnamese' : 'English'}.`,
+      refinePrompt: defaultRefinePrompt,
     },
   ],
   edges: [
+    { id: 'n4-n10', source: 'n4', target: 'n10' },
+    { id: 'n4-n11', source: 'n4', target: 'n11' },
+    { id: 'n10-n9', source: 'n10', target: 'n9' },
+    { id: 'n11-n9', source: 'n11', target: 'n9' },
     { id: 'e1-2', source: 'n1', target: 'n2' },
     { id: 'e1-3', source: 'n1', target: 'n3' },
     { id: 'e2-s1', source: 'n2', target: 's1' },
