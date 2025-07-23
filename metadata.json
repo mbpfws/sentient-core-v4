@@ -1,0 +1,6 @@
+{
+  "name": "Intelligent Project Workspace",
+  "description": "An AI-driven project management system that autonomously generates hierarchical documentation. Features a mind-map style document explorer and a context-aware chat for deep, relational querying of project artifacts.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
