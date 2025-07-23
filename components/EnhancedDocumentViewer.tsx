@@ -13,6 +13,7 @@ import {
 import SvgMockupRenderer from './SvgMockupRenderer';
 import MermaidDiagramRenderer from './MermaidDiagramRenderer';
 import MarkdownRenderer from './MarkdownRenderer';
+import ErrorBoundary from './ErrorBoundary';
 
 interface EnhancedDocumentViewerProps {
   node: GraphNode;
@@ -86,27 +87,45 @@ const ContentSection: React.FC<{
 }> = ({ title, content, isStreaming, t, nodeId, contentType, defaultExpanded = true }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
-  // Enhanced content type detection
+  // Enhanced content type detection with strict validation
   const detectContentType = (text: string) => {
     const trimmedContent = text.trim();
     
+    // SVG detection - must have both opening and closing tags
     if (trimmedContent.includes('<svg') && trimmedContent.includes('</svg>')) {
       return 'svg';
     }
     
-    if (trimmedContent.includes('graph') || trimmedContent.includes('flowchart') || 
-        trimmedContent.includes('sequenceDiagram') || trimmedContent.includes('classDiagram') || 
-        trimmedContent.includes('gantt') || trimmedContent.includes('gitgraph') ||
-        trimmedContent.includes('pie') || trimmedContent.includes('journey') ||
-        trimmedContent.includes('erDiagram') || trimmedContent.includes('stateDiagram')) {
+    // Mermaid detection - must be very specific to avoid false positives
+    const mermaidKeywords = [
+      'graph TD', 'graph LR', 'graph TB', 'graph RL',
+      'flowchart TD', 'flowchart LR', 'flowchart TB', 'flowchart RL',
+      'sequenceDiagram', 'classDiagram', 'stateDiagram',
+      'erDiagram', 'journey', 'gantt', 'pie title', 'gitgraph'
+    ];
+    
+    // Check if content starts with mermaid keywords or is wrapped in mermaid code blocks
+    const startsWithMermaid = mermaidKeywords.some(keyword => 
+      trimmedContent.startsWith(keyword) || 
+      trimmedContent.startsWith('```mermaid\n' + keyword) ||
+      trimmedContent.includes('```mermaid\n' + keyword)
+    );
+    
+    // Additional check for mermaid code blocks
+    const hasMermaidCodeBlock = trimmedContent.includes('```mermaid') && trimmedContent.includes('```');
+    
+    if (startsWithMermaid || hasMermaidCodeBlock) {
       return 'mermaid';
     }
     
-    if (trimmedContent.includes('#') || trimmedContent.includes('**') || 
-        trimmedContent.includes('*') || trimmedContent.includes('```') ||
-        trimmedContent.includes('[') || trimmedContent.includes('|') ||
-        trimmedContent.includes('>') || trimmedContent.includes('-') ||
-        trimmedContent.includes('1.') || trimmedContent.includes('_')) {
+    // Markdown detection - be more conservative to avoid false positives
+    const hasMarkdownHeaders = /^#{1,6}\s/.test(trimmedContent) || trimmedContent.includes('\n#');
+    const hasMarkdownFormatting = trimmedContent.includes('**') || trimmedContent.includes('__');
+    const hasMarkdownLists = /^\s*[-*+]\s/.test(trimmedContent) || /^\s*\d+\.\s/.test(trimmedContent);
+    const hasMarkdownCode = trimmedContent.includes('```') && !hasMermaidCodeBlock;
+    const hasMarkdownLinks = /\[.*\]\(.*\)/.test(trimmedContent);
+    
+    if (hasMarkdownHeaders || hasMarkdownFormatting || hasMarkdownLists || hasMarkdownCode || hasMarkdownLinks) {
       return 'markdown';
     }
     
@@ -114,9 +133,15 @@ const ContentSection: React.FC<{
   };
 
   const contentTypeDetected = detectContentType(content);
-  const isSvgContent = (nodeId === 'n7' && contentType === 'content' && content.trim().startsWith('<svg')) || contentTypeDetected === 'svg';
-  const isMermaidContent = (nodeId === 'n8' && contentType === 'content') || contentTypeDetected === 'mermaid';
-  const isMarkdownContent = contentTypeDetected === 'markdown';
+  
+  // More specific node-based detection with fallback to content detection
+  const isSvgContent = (nodeId === 'n7' && contentType === 'content' && content.trim().startsWith('<svg')) || 
+                       (contentTypeDetected === 'svg');
+  
+  const isMermaidContent = (nodeId === 'n8' && contentType === 'content') || 
+                           (contentTypeDetected === 'mermaid');
+  
+  const isMarkdownContent = contentTypeDetected === 'markdown' && !isSvgContent && !isMermaidContent;
 
   const getContentIcon = () => {
     if (isSvgContent) return <ImageIcon />;
@@ -155,25 +180,31 @@ const ContentSection: React.FC<{
           {content || isStreaming ? (
             <>
               {isSvgContent ? (
-                <SvgMockupRenderer 
-                  svgContent={content}
-                  title={title}
-                  className="mb-4"
-                />
-              ) : isMermaidContent ? (
-                <MermaidDiagramRenderer 
-                  mermaidCode={content}
-                  title={title}
-                  className="mb-4"
-                />
-              ) : isMarkdownContent ? (
-                <div className="bg-slate-900/50 rounded-md p-4">
-                  <MarkdownRenderer 
-                    content={content}
-                    className="max-w-none"
+                <ErrorBoundary fallback={<div className="text-red-400 p-4">Failed to render SVG content</div>}>
+                  <SvgMockupRenderer 
+                    svgContent={content}
+                    title={title}
+                    className="mb-4"
                   />
-                  {isStreaming && <span className="inline-block w-2 h-4 bg-blue-400 animate-pulse ml-1" />}
-                </div>
+                </ErrorBoundary>
+              ) : isMermaidContent ? (
+                <ErrorBoundary fallback={<div className="text-red-400 p-4">Failed to render Mermaid diagram</div>}>
+                  <MermaidDiagramRenderer 
+                    mermaidCode={content}
+                    title={title}
+                    className="mb-4"
+                  />
+                </ErrorBoundary>
+              ) : isMarkdownContent ? (
+                <ErrorBoundary fallback={<div className="text-red-400 p-4">Failed to render Markdown content</div>}>
+                  <div className="bg-slate-900/50 rounded-md p-4">
+                    <MarkdownRenderer 
+                      content={content}
+                      className="max-w-none"
+                    />
+                    {isStreaming && <span className="inline-block w-2 h-4 bg-blue-400 animate-pulse ml-1" />}
+                  </div>
+                </ErrorBoundary>
               ) : (
                 <pre className="whitespace-pre-wrap break-words font-mono text-sm text-slate-300 bg-slate-900/50 p-4 rounded-md overflow-x-auto max-h-96 overflow-y-auto">
                   {content}
@@ -201,6 +232,27 @@ const EnhancedDocumentViewer: React.FC<EnhancedDocumentViewerProps> = ({
   t,
   className = ''
 }) => {
+  // Add safety checks
+  if (!node) {
+    return (
+      <div className={`flex flex-col h-full ${className}`}>
+        <div className="p-4 text-center text-slate-400">
+          <p>No document selected</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!t) {
+    return (
+      <div className={`flex flex-col h-full ${className}`}>
+        <div className="p-4 text-center text-slate-400">
+          <p>Loading translations...</p>
+        </div>
+      </div>
+    );
+  }
+
   const isSynthesisNode = node.nodeType === NodeType.SYNTHESIS;
   const synthesisContent = document?.content || '';
   const outlineContent = document?.outline || '';

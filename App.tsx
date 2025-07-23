@@ -19,7 +19,8 @@ import ChatPanel from './components/ChatPanel';
 import NodeTester from './components/NodeTester';
 import { LayoutGridIcon, NetworkIcon } from './components/icons';
 import ApiKeyModal from './components/ApiKeyModal';
-import { ResizableLayout } from './components/ResizableLayout';
+import ResizableLayout from './components/ResizableLayout';
+import ErrorBoundary from './components/ErrorBoundary';
 
 type ProjectAction =
     | { type: 'START_WORKFLOW'; payload: { description: string } }
@@ -547,17 +548,19 @@ Question: "${message}"
                                     />
                                     {activeNode && (
                                         <div className="flex-1 overflow-hidden">
-                                            <EnhancedDocumentViewer 
-                                                node={activeNode}
-                                                document={activeDocument}
-                                                streamingContent={activeProject.streamingContent}
-                                                streamingSource={activeProject.streamingSource}
-                                                isStreaming={activeProject.isStreaming}
-                                                onApprove={handleApproval}
-                                                onReject={handleRejection}
-                                                t={t}
-                                                className="h-full"
-                                            />
+                                            <ErrorBoundary>
+                                                <EnhancedDocumentViewer 
+                                                    node={activeNode}
+                                                    document={activeDocument}
+                                                    streamingContent={activeProject.streamingContent}
+                                                    streamingSource={activeProject.streamingSource}
+                                                    isStreaming={activeProject.isStreaming}
+                                                    onApprove={handleApproval}
+                                                    onReject={handleRejection}
+                                                    t={t}
+                                                    className="h-full"
+                                                />
+                                            </ErrorBoundary>
                                         </div>
                                     )}
                                 </div>
@@ -584,28 +587,32 @@ Question: "${message}"
                             rightPanel={
                                 <div className="h-full flex flex-col">
                                     <div className="flex-1 overflow-hidden">
-                                        <EnhancedDocumentManager 
-                                            nodes={activeProject.workflow.nodes}
-                                            onSelectNode={handleSetActiveNode}
-                                            t={t}
-                                            className="h-full"
-                                        />
+                                        <ErrorBoundary>
+                                            <EnhancedDocumentManager 
+                                                nodes={activeProject.workflow.nodes}
+                                                onSelectNode={handleSetActiveNode}
+                                                t={t}
+                                                className="h-full"
+                                            />
+                                        </ErrorBoundary>
                                     </div>
                                 </div>
                             }
                             bottomPanel={
                                 activeNode && (
-                                    <EnhancedDocumentViewer 
-                                        node={activeNode}
-                                        document={activeDocument}
-                                        streamingContent={activeProject.streamingContent}
-                                        streamingSource={activeProject.streamingSource}
-                                        isStreaming={activeProject.isStreaming}
-                                        onApprove={handleApproval}
-                                        onReject={handleRejection}
-                                        t={t}
-                                        className="h-full"
-                                    />
+                                    <ErrorBoundary>
+                                        <EnhancedDocumentViewer 
+                                            node={activeNode}
+                                            document={activeDocument}
+                                            streamingContent={activeProject.streamingContent}
+                                            streamingSource={activeProject.streamingSource}
+                                            isStreaming={activeProject.isStreaming}
+                                            onApprove={handleApproval}
+                                            onReject={handleRejection}
+                                            t={t}
+                                            className="h-full"
+                                        />
+                                    </ErrorBoundary>
                                 )
                             }
                             defaultLeftWidth={40}

@@ -24,8 +24,38 @@ const MermaidDiagramRenderer: React.FC<MermaidDiagramRendererProps> = ({
   const mermaidRefs = useRef<(HTMLDivElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Validate if content is actually Mermaid
+  const isValidMermaidContent = (content: string): boolean => {
+    const trimmedContent = content.trim();
+    
+    // Check for Mermaid keywords
+    const mermaidKeywords = [
+      'graph TD', 'graph LR', 'graph TB', 'graph RL',
+      'flowchart TD', 'flowchart LR', 'flowchart TB', 'flowchart RL',
+      'sequenceDiagram', 'classDiagram', 'stateDiagram',
+      'erDiagram', 'journey', 'gantt', 'pie title', 'gitgraph'
+    ];
+    
+    // Check if content starts with mermaid keywords or is wrapped in mermaid code blocks
+    const startsWithMermaid = mermaidKeywords.some(keyword => 
+      trimmedContent.startsWith(keyword) || 
+      trimmedContent.startsWith('```mermaid\n' + keyword) ||
+      trimmedContent.includes('```mermaid\n' + keyword)
+    );
+    
+    // Additional check for mermaid code blocks
+    const hasMermaidCodeBlock = trimmedContent.includes('```mermaid') && trimmedContent.includes('```');
+    
+    return startsWithMermaid || hasMermaidCodeBlock;
+  };
+
   // Parse function to extract multiple Mermaid blocks
   const parseMermaidCodes = (raw: string): string[] => {
+    // First validate if this is actually Mermaid content
+    if (!isValidMermaidContent(raw)) {
+      return [];
+    }
+    
     const regex = /```mermaid\s*([\s\S]*?)\s*```/g;
     const matches = [];
     let match;
@@ -156,16 +186,17 @@ const MermaidDiagramRenderer: React.FC<MermaidDiagramRendererProps> = ({
   };
 
   const handleRefresh = () => {
-    if (mermaidRef.current) {
-      mermaidRef.current.innerHTML = '';
-      setIsRendered(false);
-      setError(null);
-      // Trigger re-render
-      setTimeout(() => {
-        const event = new Event('mermaid-refresh');
-        window.dispatchEvent(event);
-      }, 100);
-    }
+    // Clear all diagram refs and reset state
+    mermaidRefs.current.forEach(ref => {
+      if (ref) {
+        ref.innerHTML = '';
+      }
+    });
+    setIsRendered(false);
+    setError(null);
+    // Trigger re-render by updating parsedCodes
+    const codes = parseMermaidCodes(mermaidCode);
+    setParsedCodes([...codes]);
   };
 
   if (!mermaidCode.trim()) {
@@ -173,6 +204,16 @@ const MermaidDiagramRenderer: React.FC<MermaidDiagramRendererProps> = ({
       <div className={`bg-slate-800/50 border border-slate-600 rounded-lg p-8 text-center ${className}`}>
         <div className="text-slate-400 text-lg mb-2">No Diagram Content</div>
         <p className="text-slate-500 text-sm">Mermaid diagram will appear here once generated</p>
+      </div>
+    );
+  }
+
+  // Check if content is valid Mermaid before rendering
+  if (!isValidMermaidContent(mermaidCode)) {
+    return (
+      <div className={`bg-slate-800/50 border border-slate-600 rounded-lg p-8 text-center ${className}`}>
+        <div className="text-yellow-400 text-lg mb-2">Invalid Mermaid Content</div>
+        <p className="text-slate-500 text-sm">This content does not appear to be a valid Mermaid diagram</p>
       </div>
     );
   }
@@ -202,14 +243,14 @@ const MermaidDiagramRenderer: React.FC<MermaidDiagramRendererProps> = ({
             <RefreshIcon />
           </button>
           <button
-            onClick={handleDownloadSvg}
+            onClick={() => handleDownloadSvg(0)}
             className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded flex items-center gap-1 transition-colors"
             disabled={!isRendered}
           >
             <DownloadIcon /> SVG
           </button>
           <button
-            onClick={handleDownloadPng}
+            onClick={() => handleDownloadPng(0)}
             className="px-3 py-1 bg-green-600 hover:bg-green-500 text-white text-xs rounded flex items-center gap-1 transition-colors"
             disabled={!isRendered}
           >
@@ -242,11 +283,6 @@ const MermaidDiagramRenderer: React.FC<MermaidDiagramRendererProps> = ({
               ref={(el) => (mermaidRefs.current[index] = el)}
               className="p-4 flex justify-center items-center min-h-[200px] border-b border-slate-700 last:border-0"
             >
-              {/* Add download buttons per diagram */}
-              <div className="absolute top-2 right-2 flex gap-2">
-                <button onClick={() => handleDownloadSvg(index)} className="...">SVG</button>
-                <button onClick={() => handleDownloadPng(index)} className="...">PNG</button>
-              </div>
             </div>
           ))}
         </div>
