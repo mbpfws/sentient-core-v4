@@ -3,6 +3,7 @@ import { Document, GraphNode, NodeStatus, NodeType } from '../types';
 import { CheckCircleIcon, XCircleIcon } from './icons';
 import SvgMockupRenderer from './SvgMockupRenderer';
 import MermaidDiagramRenderer from './MermaidDiagramRenderer';
+import MarkdownRenderer from './MarkdownRenderer';
 
 interface DocumentViewerProps {
   node: GraphNode;
@@ -68,13 +69,42 @@ const DocumentContentDisplay: React.FC<{
   contentType?: 'outline' | 'content' | 'synthesis'
 }> = ({ title, content, isStreaming, t, nodeId, contentType }) => {
   
-  // Check if this is SVG content for Front-end Mockup Interfaces node
-  const isSvgContent = nodeId === 'n7' && contentType === 'content' && content.trim().startsWith('<svg');
+  // Enhanced content type detection
+  const detectContentType = (text: string) => {
+    const trimmedContent = text.trim();
+    
+    // Check for SVG content
+    if (trimmedContent.includes('<svg') && trimmedContent.includes('</svg>')) {
+      return 'svg';
+    }
+    
+    // Check for Mermaid content
+    if (trimmedContent.includes('graph') || trimmedContent.includes('flowchart') || 
+        trimmedContent.includes('sequenceDiagram') || trimmedContent.includes('classDiagram') || 
+        trimmedContent.includes('gantt') || trimmedContent.includes('gitgraph') ||
+        trimmedContent.includes('pie') || trimmedContent.includes('journey') ||
+        trimmedContent.includes('erDiagram') || trimmedContent.includes('stateDiagram')) {
+      return 'mermaid';
+    }
+    
+    // Check for Markdown content (headers, lists, links, code blocks, etc.)
+    if (trimmedContent.includes('#') || trimmedContent.includes('**') || 
+        trimmedContent.includes('*') || trimmedContent.includes('```') ||
+        trimmedContent.includes('[') || trimmedContent.includes('|') ||
+        trimmedContent.includes('>') || trimmedContent.includes('-') ||
+        trimmedContent.includes('1.') || trimmedContent.includes('_')) {
+      return 'markdown';
+    }
+    
+    return 'text';
+  };
+
+  const contentTypeDetected = detectContentType(content);
   
-  // Check if this is Mermaid content for Architectural Visualizer node
-  const isMermaidContent = nodeId === 'n8' && contentType === 'content' && 
-    (content.includes('graph') || content.includes('flowchart') || content.includes('sequenceDiagram') || 
-     content.includes('classDiagram') || content.includes('gantt') || content.includes('gitgraph'));
+  // Legacy node-specific detection for backward compatibility
+  const isSvgContent = (nodeId === 'n7' && contentType === 'content' && content.trim().startsWith('<svg')) || contentTypeDetected === 'svg';
+  const isMermaidContent = (nodeId === 'n8' && contentType === 'content') || contentTypeDetected === 'mermaid';
+  const isMarkdownContent = contentTypeDetected === 'markdown';
 
   return (
     <div className="mb-6">
@@ -93,8 +123,16 @@ const DocumentContentDisplay: React.FC<{
               title={title}
               className="mb-4"
             />
+          ) : isMarkdownContent ? (
+            <div className="bg-slate-900/50 rounded-md p-4 mb-4">
+              <MarkdownRenderer 
+                content={content}
+                className="max-w-none"
+              />
+              {isStreaming && <span className="inline-block w-2 h-4 bg-blue-400 animate-pulse ml-1" />}
+            </div>
           ) : (
-            <pre className="whitespace-pre-wrap break-words font-mono text-sm text-slate-300 bg-slate-900/50 p-4 rounded-md">
+            <pre className="whitespace-pre-wrap break-words font-mono text-sm text-slate-300 bg-slate-900/50 p-4 rounded-md overflow-x-auto">
               {content}
               {isStreaming && <span className="inline-block w-2 h-4 bg-blue-400 animate-pulse ml-1" />}
             </pre>

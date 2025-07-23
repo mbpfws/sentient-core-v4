@@ -1,6 +1,19 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Document, GraphNode, NodeType } from '../types';
-import { DownloadIcon, FileIcon, FolderIcon, TrashIcon } from './icons';
+import { 
+  DownloadIcon, 
+  FileIcon, 
+  FolderIcon, 
+  TrashIcon, 
+  ChevronLeftIcon, 
+  ChevronRightIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  EyeIcon,
+  CodeIcon,
+  ImageIcon,
+  FileTextIcon
+} from './icons';
 import { saveAs } from 'file-saver';
 import JSZip from 'jszip';
 
@@ -21,31 +34,130 @@ const EnhancedDocumentManager: React.FC<EnhancedDocumentManagerProps> = ({
 }) => {
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set());
   const [exportFormat, setExportFormat] = useState<'json' | 'zip'>('zip');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [sortBy, setSortBy] = useState<'name' | 'date' | 'size' | 'type'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [filterType, setFilterType] = useState<'all' | 'svg' | 'mermaid' | 'markdown' | 'text'>('all');
 
   // Get node information for a document
   const getNodeInfo = useCallback((nodeId: string) => {
     return nodes.find(node => node.id === nodeId);
   }, [nodes]);
 
+  // Detect content type
+  const detectContentType = useCallback((doc: Document) => {
+    const content = doc.content || '';
+    if (content.includes('<svg') && content.includes('</svg>')) return 'svg';
+    if (content.includes('graph') || content.includes('flowchart') || content.includes('sequenceDiagram')) return 'mermaid';
+    if (content.includes('#') || content.includes('**') || content.includes('```')) return 'markdown';
+    return 'text';
+  }, []);
+
+  // Filter and sort documents
+  const filteredAndSortedDocuments = useMemo(() => {
+    let filtered = documents.filter(doc => {
+      const nodeInfo = getNodeInfo(doc.nodeId);
+      const searchMatch = !searchTerm || 
+        (nodeInfo?.label || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (doc.content || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (doc.outline || '').toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const typeMatch = filterType === 'all' || detectContentType(doc) === filterType;
+      
+      return searchMatch && typeMatch;
+    });
+
+    // Sort documents
+    filtered.sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortBy) {
+        case 'name':
+          const aName = getNodeInfo(a.nodeId)?.label || '';
+          const bName = getNodeInfo(b.nodeId)?.label || '';
+          comparison = aName.localeCompare(bName);
+          break;
+        case 'date':
+          comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+          break;
+        case 'size':
+          const aSize = (a.outline?.length || 0) + (a.content?.length || 0) + (a.synthesis?.length || 0);
+          const bSize = (b.outline?.length || 0) + (b.content?.length || 0) + (b.synthesis?.length || 0);
+          comparison = aSize - bSize;
+          break;
+        case 'type':
+          comparison = detectContentType(a).localeCompare(detectContentType(b));
+          break;
+      }
+      
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    return filtered;
+  }, [documents, searchTerm, filterType, sortBy, sortOrder, getNodeInfo, detectContentType]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredAndSortedDocuments.length / itemsPerPage);
+  const paginatedDocuments = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredAndSortedDocuments.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredAndSortedDocuments, currentPage, itemsPerPage]);
+
   // Handle document selection
   const toggleDocumentSelection = (documentId: string) => {
-    const newSelection = new Set(selectedDocuments);
-    if (newSelection.has(documentId)) {
-      newSelection.delete(documentId);
-    } else {
-      newSelection.add(documentId);
-    }
-    setSelectedDocuments(newSelection);
+    setSelectedDocuments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(documentId)) {
+        newSet.delete(documentId);
+      } else {
+        newSet.add(documentId);
+      }
+      return newSet;
+    });
   };
 
-  // Select all documents
+  // Select all visible documents
   const selectAllDocuments = () => {
-    setSelectedDocuments(new Set(documents.map(doc => doc.id)));
+    setSelectedDocuments(new Set(paginatedDocuments.map(doc => doc.id)));
   };
 
   // Clear selection
   const clearSelection = () => {
     setSelectedDocuments(new Set());
+  };
+
+  // Handle sorting
+  const handleSort = (field: 'name' | 'date' | 'size' | 'type') => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
+
+  // Get enhanced document icon
+  const getDocumentIcon = (doc: Document) => {
+    const contentType = detectContentType(doc);
+    switch (contentType) {
+      case 'svg': return <ImageIcon />;
+      case 'mermaid': return <CodeIcon />;
+      case 'markdown': return <FileTextIcon />;
+      default: return <EyeIcon />;
+    }
+  };
+
+  // Get document type label
+  const getDocumentTypeLabel = (doc: Document) => {
+    const contentType = detectContentType(doc);
+    switch (contentType) {
+      case 'svg': return 'SVG';
+      case 'mermaid': return 'Mermaid';
+      case 'markdown': return 'Markdown';
+      default: return 'Text';
+    }
   };
 
   // Export selected documents
@@ -135,15 +247,6 @@ const EnhancedDocumentManager: React.FC<EnhancedDocumentManagerProps> = ({
     }
   };
 
-  // Get document type icon
-  const getDocumentIcon = (doc: Document) => {
-    const nodeInfo = getNodeInfo(doc.nodeId);
-    if (nodeInfo?.id === 'n7') return '🎨'; // SVG mockups
-    if (nodeInfo?.id === 'n8') return '📊'; // Mermaid diagrams
-    if (nodeInfo?.nodeType === NodeType.SYNTHESIS) return '📋';
-    return '📄';
-  };
-
   // Get document size estimate
   const getDocumentSize = (doc: Document) => {
     const totalSize = (doc.outline?.length || 0) + (doc.content?.length || 0) + (doc.synthesis?.length || 0);
@@ -160,9 +263,33 @@ const EnhancedDocumentManager: React.FC<EnhancedDocumentManagerProps> = ({
           <h3 className="text-lg font-semibold text-slate-200">Document Manager</h3>
           <div className="flex items-center gap-2">
             <span className="text-sm text-slate-400">
-              {selectedDocuments.size} of {documents.length} selected
+              {selectedDocuments.size} of {filteredAndSortedDocuments.length} selected
             </span>
           </div>
+        </div>
+        
+        {/* Search and Filter */}
+        <div className="flex items-center gap-4 mb-4">
+          <div className="flex-1">
+            <input
+              type="text"
+              placeholder="Search documents..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-slate-200 placeholder-slate-400 focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value as any)}
+            className="px-3 py-2 bg-slate-700 border border-slate-600 text-slate-200 rounded-md"
+          >
+            <option value="all">All Types</option>
+            <option value="svg">SVG</option>
+            <option value="mermaid">Mermaid</option>
+            <option value="markdown">Markdown</option>
+            <option value="text">Text</option>
+          </select>
         </div>
         
         {/* Controls */}
@@ -172,7 +299,7 @@ const EnhancedDocumentManager: React.FC<EnhancedDocumentManagerProps> = ({
               onClick={selectAllDocuments}
               className="px-3 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-200 rounded transition-colors"
             >
-              Select All
+              Select Page
             </button>
             <button
               onClick={clearSelection}
@@ -212,16 +339,44 @@ const EnhancedDocumentManager: React.FC<EnhancedDocumentManagerProps> = ({
         </div>
       </div>
 
+      {/* Sort Controls */}
+      <div className="px-4 py-2 bg-slate-800/30 border-b border-slate-700">
+        <div className="flex items-center gap-4 text-sm">
+          <span className="text-slate-400">Sort by:</span>
+          {(['name', 'date', 'size', 'type'] as const).map(field => (
+            <button
+              key={field}
+              onClick={() => handleSort(field)}
+              className={`flex items-center gap-1 px-2 py-1 rounded transition-colors ${
+                sortBy === field 
+                  ? 'bg-blue-600 text-white' 
+                  : 'text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              {field.charAt(0).toUpperCase() + field.slice(1)}
+              {sortBy === field && (
+                sortOrder === 'asc' ? <ChevronUpIcon /> : <ChevronDownIcon />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Document List */}
       <div className="max-h-96 overflow-y-auto">
-        {documents.length === 0 ? (
+        {paginatedDocuments.length === 0 ? (
           <div className="p-8 text-center text-slate-400">
             <FolderIcon />
-            <p className="mt-2">No documents available</p>
+            <p className="mt-2">
+              {filteredAndSortedDocuments.length === 0 
+                ? (searchTerm || filterType !== 'all' ? 'No documents match your filters' : 'No documents available')
+                : 'No documents on this page'
+              }
+            </p>
           </div>
         ) : (
           <div className="divide-y divide-slate-700">
-            {documents.map(doc => {
+            {paginatedDocuments.map(doc => {
               const nodeInfo = getNodeInfo(doc.nodeId);
               const isSelected = selectedDocuments.has(doc.id);
               
@@ -235,17 +390,20 @@ const EnhancedDocumentManager: React.FC<EnhancedDocumentManagerProps> = ({
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3 flex-grow">
-                      <div className="text-2xl">{getDocumentIcon(doc)}</div>
+                      <div className="text-slate-300 mt-1">{getDocumentIcon(doc)}</div>
                       <div className="flex-grow">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-medium text-slate-200">
                             {nodeInfo?.label || 'Unknown Node'}
                           </h4>
                           <span className="px-2 py-0.5 text-xs bg-slate-600 text-slate-300 rounded">
+                            {getDocumentTypeLabel(doc)}
+                          </span>
+                          <span className="px-2 py-0.5 text-xs bg-slate-700 text-slate-400 rounded">
                             {nodeInfo?.nodeType || 'Unknown'}
                           </span>
                         </div>
-                        <p className="text-sm text-slate-400 mb-2">
+                        <p className="text-sm text-slate-400 mb-2 line-clamp-2">
                           {nodeInfo?.details || 'No description available'}
                         </p>
                         <div className="flex items-center gap-4 text-xs text-slate-500">
@@ -274,6 +432,67 @@ const EnhancedDocumentManager: React.FC<EnhancedDocumentManagerProps> = ({
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="p-4 border-t border-slate-700 bg-slate-800/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-400">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredAndSortedDocuments.length)} of {filteredAndSortedDocuments.length}
+              </span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-2 py-1 text-xs bg-slate-700 border border-slate-600 text-slate-200 rounded"
+              >
+                <option value={5}>5 per page</option>
+                <option value={10}>10 per page</option>
+                <option value={20}>20 per page</option>
+                <option value={50}>50 per page</option>
+              </select>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="p-1 text-slate-400 hover:text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeftIcon />
+              </button>
+              
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                      currentPage === pageNum
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="p-1 text-slate-400 hover:text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronRightIcon />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
