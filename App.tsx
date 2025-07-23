@@ -548,6 +548,8 @@ Question: "${message}"
                                     {activeNode && (
                                         <div className="flex-1 overflow-hidden">
                                             <EnhancedDocumentViewer 
+                                                geminiService={geminiService} 
+    geminiService={geminiService} 
                                                 node={activeNode}
                                                 document={activeDocument}
                                                 streamingContent={activeProject.streamingContent}
