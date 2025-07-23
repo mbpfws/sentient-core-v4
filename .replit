@@ -1,0 +1,10 @@
+[nix]
+channel = "stable-22_11"
+
+[deployment]
+run = ["sh", "-c", "npm ci && npm run build && npm run preview -- --host 0.0.0.0 --port 3000"]
+deploymentTarget = "cloudrun"
+
+[[ports]]
+localPort = 3000
+externalPort = 80
