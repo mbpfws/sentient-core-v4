@@ -20,11 +20,29 @@ const MermaidDiagramRenderer: React.FC<MermaidDiagramRendererProps> = ({
   const [isRendered, setIsRendered] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCode, setShowCode] = useState(false);
-  const mermaidRef = useRef<HTMLDivElement>(null);
+  const [parsedCodes, setParsedCodes] = useState<string[]>([]);
+  const mermaidRefs = useRef<(HTMLDivElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Parse function to extract multiple Mermaid blocks
+  const parseMermaidCodes = (raw: string): string[] => {
+    const regex = /```mermaid\s*([\s\S]*?)\s*```/g;
+    const matches = [];
+    let match;
+    while ((match = regex.exec(raw)) !== null) {
+      matches.push(match[1].trim());
+    }
+    return matches.length > 0 ? matches : [raw.trim()];
+  };
+
   useEffect(() => {
-    // Initialize Mermaid with configuration
+    const codes = parseMermaidCodes(mermaidCode);
+    setParsedCodes(codes);
+    setIsRendered(false);
+    setError(null);
+  }, [mermaidCode]);
+
+  useEffect(() => {
     mermaid.initialize({
       startOnLoad: false,
       theme: 'dark',
@@ -73,36 +91,26 @@ const MermaidDiagramRenderer: React.FC<MermaidDiagramRendererProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!mermaidCode.trim() || !mermaidRef.current) return;
+    if (parsedCodes.length === 0) return;
 
-    const renderDiagram = async () => {
-      try {
-        setError(null);
-        setIsRendered(false);
+    const renderDiagrams = async () => {
+      setError(null);
+      setIsRendered(false);
 
-        // Clear previous content
-        if (mermaidRef.current) {
-          mermaidRef.current.innerHTML = '';
-        }
+      for (let i = 0; i < parsedCodes.length; i++) {
+        const ref = mermaidRefs.current[i];
+        if (!ref) continue;
 
-        // Generate unique ID for this diagram
-        const diagramId = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        
-        // Validate and render the diagram
-        const { svg } = await mermaid.render(diagramId, mermaidCode);
-        
-        if (mermaidRef.current) {
-          mermaidRef.current.innerHTML = svg;
-          setIsRendered(true);
-        }
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : 'Failed to render Mermaid diagram';
-        setError(errorMsg);
-        setIsRendered(false);
-        onError?.(errorMsg);
-        
-        if (mermaidRef.current) {
-          mermaidRef.current.innerHTML = `
+        try {
+          ref.innerHTML = '';
+          const diagramId = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${i}`;
+          const { svg } = await mermaid.render(diagramId, parsedCodes[i]);
+          ref.innerHTML = svg;
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : 'Failed to render Mermaid diagram';
+          setError(errorMsg);
+          onError?.(errorMsg);
+          ref.innerHTML = `
             <div class="text-red-400 p-4 text-center">
               <div class="font-semibold mb-2">Diagram Rendering Error</div>
               <div class="text-sm text-red-300">${errorMsg}</div>
@@ -110,35 +118,36 @@ const MermaidDiagramRenderer: React.FC<MermaidDiagramRendererProps> = ({
           `;
         }
       }
+      setIsRendered(true);
     };
 
-    renderDiagram();
-  }, [mermaidCode, onError]);
+    renderDiagrams();
+  }, [parsedCodes, onError]);
 
-  const handleDownloadSvg = () => {
-    if (!isRendered || !mermaidRef.current) return;
-    
-    const svgElement = mermaidRef.current.querySelector('svg');
+  // Modify download functions to handle multiple diagrams if needed
+  const handleDownloadSvg = (index: number) => {
+    const ref = mermaidRefs.current[index];
+    if (!ref) return;
+    const svgElement = ref.querySelector('svg');
     if (svgElement) {
       const svgData = new XMLSerializer().serializeToString(svgElement);
       const blob = new Blob([svgData], { type: 'image/svg+xml' });
-      saveAs(blob, `${title.replace(/\s+/g, '_')}_diagram.svg`);
+      saveAs(blob, `${title.replace(/\s+/g, '_')}_diagram_${index + 1}.svg`);
     }
   };
 
-  const handleDownloadPng = async () => {
-    if (!isRendered || !mermaidRef.current) return;
-    
+  const handleDownloadPng = async (index: number) => {
+    const ref = mermaidRefs.current[index];
+    if (!ref) return;
     try {
-      const canvas = await html2canvas(mermaidRef.current, {
+      const canvas = await html2canvas(ref, {
         backgroundColor: '#0f172a',
         scale: 2,
         useCORS: true
       });
-      
       canvas.toBlob((blob) => {
         if (blob) {
-          saveAs(blob, `${title.replace(/\s+/g, '_')}_diagram.png`);
+          saveAs(blob, `${title.replace(/\s+/g, '_')}_diagram_${index + 1}.png`);
         }
       });
     } catch (err) {
@@ -212,9 +221,14 @@ const MermaidDiagramRenderer: React.FC<MermaidDiagramRendererProps> = ({
       {/* Content */}
       {showCode ? (
         <div className="p-4 bg-slate-900">
-          <pre className="text-sm text-slate-300 font-mono whitespace-pre-wrap overflow-auto max-h-96">
-            {mermaidCode}
-          </pre>
+          {parsedCodes.map((code, index) => (
+            <div key={index} className="mb-4">
+              <h5 className="text-slate-200">Diagram {index + 1}</h5>
+              <pre className="text-sm text-slate-300 font-mono whitespace-pre-wrap overflow-auto max-h-96">
+                {code}
+              </pre>
+            </div>
+          ))}
         </div>
       ) : (
         <div 
@@ -222,10 +236,19 @@ const MermaidDiagramRenderer: React.FC<MermaidDiagramRendererProps> = ({
           className="overflow-auto bg-slate-900"
           style={{ maxHeight: '600px' }}
         >
-          <div 
-            ref={mermaidRef}
-            className="p-4 flex justify-center items-center min-h-[200px]"
-          />
+          {parsedCodes.map((_, index) => (
+            <div 
+              key={index}
+              ref={(el) => (mermaidRefs.current[index] = el)}
+              className="p-4 flex justify-center items-center min-h-[200px] border-b border-slate-700 last:border-0"
+            >
+              {/* Add download buttons per diagram */}
+              <div className="absolute top-2 right-2 flex gap-2">
+                <button onClick={() => handleDownloadSvg(index)} className="...">SVG</button>
+                <button onClick={() => handleDownloadPng(index)} className="...">PNG</button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

@@ -19,50 +19,69 @@ const SvgMockupRenderer: React.FC<SvgMockupRendererProps> = ({
   const [zoom, setZoom] = useState(1);
   const [isValid, setIsValid] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const svgRef = useRef<HTMLDivElement>(null);
+  const [parsedSvgs, setParsedSvgs] = useState<string[]>([]);
+  const svgRefs = useRef<(HTMLDivElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    try {
-      // Validate SVG content
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(svgContent, 'image/svg+xml');
-      const parseError = doc.querySelector('parsererror');
-      
-      if (parseError) {
-        throw new Error('Invalid SVG content');
-      }
-      
-      setIsValid(true);
-      setError(null);
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to parse SVG';
-      setError(errorMsg);
-      setIsValid(false);
-      onError?.(errorMsg);
+  // Parse function to extract multiple SVG blocks
+  const parseSvgCodes = (raw: string): string[] => {
+    const regex = /```svg\s*([\s\S]*?)\s*```/g;
+    const matches = [];
+    let match;
+    while ((match = regex.exec(raw)) !== null) {
+      matches.push(match[1].trim());
     }
-  }, [svgContent, onError]);
-
-  const handleDownloadSvg = () => {
-    if (!isValid) return;
-    
-    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-    saveAs(blob, `${title.replace(/\s+/g, '_')}_mockup.svg`);
+    return matches.length > 0 ? matches : [raw.trim()];
   };
 
-  const handleDownloadPng = async () => {
-    if (!svgRef.current || !isValid) return;
-    
+  useEffect(() => {
+    const svgs = parseSvgCodes(svgContent);
+    setParsedSvgs(svgs);
+    setIsValid(false);
+    setError(null);
+  }, [svgContent]);
+
+  useEffect(() => {
+    if (parsedSvgs.length === 0) return;
+
+    let hasError = false;
+    parsedSvgs.forEach((svg, index) => {
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svg, 'image/svg+xml');
+        const parseError = doc.querySelector('parsererror');
+        if (parseError) {
+          throw new Error('Invalid SVG content');
+        }
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Failed to parse SVG';
+        setError(errorMsg);
+        onError?.(errorMsg);
+        hasError = true;
+      }
+    });
+    setIsValid(!hasError);
+  }, [parsedSvgs, onError]);
+
+  // Update download functions for multiple
+  const handleDownloadSvg = (index: number) => {
+    if (!isValid || index >= parsedSvgs.length) return;
+    const blob = new Blob([parsedSvgs[index]], { type: 'image/svg+xml' });
+    saveAs(blob, `${title.replace(/\s+/g, '_')}_mockup_${index + 1}.svg`);
+  };
+
+  const handleDownloadPng = async (index: number) => {
+    const ref = svgRefs.current[index];
+    if (!ref || !isValid) return;
     try {
-      const canvas = await html2canvas(svgRef.current, {
+      const canvas = await html2canvas(ref, {
         backgroundColor: '#ffffff',
         scale: 2,
         useCORS: true
       });
-      
       canvas.toBlob((blob) => {
         if (blob) {
-          saveAs(blob, `${title.replace(/\s+/g, '_')}_mockup.png`);
+          saveAs(blob, `${title.replace(/\s+/g, '_')}_mockup_${index + 1}.png`);
         }
       });
     } catch (err) {
@@ -150,18 +169,26 @@ const SvgMockupRenderer: React.FC<SvgMockupRendererProps> = ({
         className="overflow-auto bg-white"
         style={{ maxHeight: '600px' }}
       >
-        <div 
-          ref={svgRef}
-          className="p-4 flex justify-center items-center min-h-[200px]"
-          style={{ transform: `scale(${zoom})`, transformOrigin: 'center top' }}
-        >
-          {isValid && (
-            <div 
-              dangerouslySetInnerHTML={{ __html: svgContent }}
-              className="max-w-full"
-            />
-          )}
-        </div>
+        {parsedSvgs.map((svg, index) => (
+          <div 
+            key={index}
+            ref={(el) => (svgRefs.current[index] = el)}
+            className="p-4 flex justify-center items-center min-h-[200px] border-b border-slate-700 last:border-0"
+            style={{ transform: `scale(${zoom})`, transformOrigin: 'center top' }}
+          >
+            {isValid && (
+              <div 
+                dangerouslySetInnerHTML={{ __html: svg }}
+                className="max-w-full"
+              />
+            )}
+            {/* Add per-SVG download buttons */}
+            <div className="absolute top-2 right-2 flex gap-2">
+              <button onClick={() => handleDownloadSvg(index)} className="...">SVG</button>
+              <button onClick={() => handleDownloadPng(index)} className="...">PNG</button>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Metadata */}
