@@ -1,6 +1,6 @@
 export const locales = {
     en: {
-        headerTitle: "Intelligent Workspace",
+        headerTitle: "Sentient Core V. Beta",
         resetProject: "Reset Project",
         resetConfirmation: "Are you sure you want to reset the current project? All its data will be lost.",
         backToProjects: "Back to Projects",
@@ -82,7 +82,62 @@ export const locales = {
         simulateTokenLimit: "Simulate Token Limit",
         simulateFailure: "Simulate Agent Failure",
         alertFailure: "Simulated a failure on node: {nodeLabel}. Workflow halted.",
-        alertNoActiveNode: "No active node to fail. Start a workflow first."
+        alertNoActiveNode: "No active node to fail. Start a workflow first.",
+
+        // Enhanced UI Components
+        documentManagement: "Document Management",
+        searchDocuments: "Search documents...",
+        filterByType: "Filter by type",
+        allTypes: "All Types",
+        svgType: "SVG",
+        mermaidType: "Mermaid",
+        markdownType: "Markdown",
+        textType: "Text",
+        sortByName: "Name",
+        sortByDate: "Date",
+        sortBySize: "Size",
+        sortByType: "Type",
+        ascending: "Ascending",
+        descending: "Descending",
+        itemsPerPage: "Items per page",
+        showingItems: "Showing {start}-{end} of {total} items",
+        previousPage: "Previous",
+        nextPage: "Next",
+        selectAll: "Select All",
+        clearSelection: "Clear Selection",
+        exportSelected: "Export Selected",
+        deleteSelected: "Delete Selected",
+        exportAsZip: "Export as ZIP",
+        exportAsJson: "Export as JSON",
+        confirmDelete: "Are you sure you want to delete {count} selected document(s)?",
+        noDocumentsFound: "No documents found",
+        
+        // Workflow Visualizer
+        zoomIn: "Zoom In",
+        zoomOut: "Zoom Out",
+        resetZoom: "Reset Zoom",
+        fitToView: "Fit to View",
+        toggleGrid: "Toggle Grid",
+        layoutType: "Layout Type",
+        hierarchicalLayout: "Hierarchical",
+        circularLayout: "Circular",
+        forceDirectedLayout: "Force-Directed",
+        nodesCount: "Nodes: {count}",
+        edgesCount: "Edges: {count}",
+        zoomLevel: "Zoom: {level}%",
+        
+        // Document Explorer
+        graphView: "Graph View",
+        listView: "List View",
+        gridView: "Grid View",
+        toggleView: "Toggle View",
+        
+        // Document Viewer
+        documentDetails: "Document Details",
+        contentPreview: "Content Preview",
+        reviewControls: "Review Controls",
+        expandSection: "Expand Section",
+        collapseSection: "Collapse Section"
     },
     vi: {
         headerTitle: "Không gian làm việc thông minh",
@@ -167,6 +222,61 @@ export const locales = {
         simulateTokenLimit: "Mô phỏng Giới hạn Token",
         simulateFailure: "Mô phỏng Tác tử Thất bại",
         alertFailure: "Đã mô phỏng lỗi trên nút: {nodeLabel}. Quy trình đã bị dừng.",
-        alertNoActiveNode: "Không có nút nào đang hoạt động để gây lỗi. Hãy bắt đầu một quy trình trước."
+        alertNoActiveNode: "Không có nút nào đang hoạt động để gây lỗi. Hãy bắt đầu một quy trình trước.",
+
+        // Enhanced UI Components
+        documentManagement: "Quản lý Tài liệu",
+        searchDocuments: "Tìm kiếm tài liệu...",
+        filterByType: "Lọc theo loại",
+        allTypes: "Tất cả Loại",
+        svgType: "SVG",
+        mermaidType: "Mermaid",
+        markdownType: "Markdown",
+        textType: "Văn bản",
+        sortByName: "Tên",
+        sortByDate: "Ngày",
+        sortBySize: "Kích thước",
+        sortByType: "Loại",
+        ascending: "Tăng dần",
+        descending: "Giảm dần",
+        itemsPerPage: "Mục trên mỗi trang",
+        showingItems: "Hiển thị {start}-{end} trong tổng số {total} mục",
+        previousPage: "Trước",
+        nextPage: "Tiếp",
+        selectAll: "Chọn Tất cả",
+        clearSelection: "Bỏ chọn",
+        exportSelected: "Xuất đã chọn",
+        deleteSelected: "Xóa đã chọn",
+        exportAsZip: "Xuất dưới dạng ZIP",
+        exportAsJson: "Xuất dưới dạng JSON",
+        confirmDelete: "Bạn có chắc chắn muốn xóa {count} tài liệu đã chọn không?",
+        noDocumentsFound: "Không tìm thấy tài liệu",
+        
+        // Workflow Visualizer
+        zoomIn: "Phóng to",
+        zoomOut: "Thu nhỏ",
+        resetZoom: "Đặt lại Zoom",
+        fitToView: "Vừa với Màn hình",
+        toggleGrid: "Bật/Tắt Lưới",
+        layoutType: "Kiểu Bố cục",
+        hierarchicalLayout: "Phân cấp",
+        circularLayout: "Hình tròn",
+        forceDirectedLayout: "Lực hướng",
+        nodesCount: "Nút: {count}",
+        edgesCount: "Cạnh: {count}",
+        zoomLevel: "Zoom: {level}%",
+        
+        // Document Explorer
+        graphView: "Xem Đồ thị",
+        listView: "Xem Danh sách",
+        gridView: "Xem Lưới",
+        toggleView: "Chuyển đổi Xem",
+        
+        // Document Viewer
+        documentDetails: "Chi tiết Tài liệu",
+        contentPreview: "Xem trước Nội dung",
+        reviewControls: "Điều khiển Đánh giá",
+        expandSection: "Mở rộng Phần",
+        collapseSection: "Thu gọn Phần"
     }
 };
