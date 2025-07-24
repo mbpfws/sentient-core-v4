@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import mermaid from 'mermaid';
 import { saveAs } from 'file-saver';
 import html2canvas from 'html2canvas';
-import { DownloadIcon, RefreshIcon, CodeIcon, EyeIcon } from './icons';
+import { DownloadIcon, RefreshIcon, CodeIcon, EyeIcon, AlertTriangleIcon } from './icons';
+import { IntelligentErrorCorrectionService } from '../services/intelligentErrorCorrection';
 
 interface MermaidDiagramRendererProps {
   mermaidCode: string;
