@@ -35,7 +35,10 @@ type ProjectAction =
     | { type: 'SET_WORKFLOW_STATUS'; payload: { status: WorkflowStatus } }
     | { type: 'SET_USER_FEEDBACK'; payload: { nodeId: string; feedback: string } }
     | { type: 'ADD_CHAT_MESSAGE'; payload: { nodeId: string; message: ChatMessage } }
-    | { type: 'END_CHAT_STREAM'; payload: { nodeId: string; fullResponse: string } };
+    | { type: 'END_CHAT_STREAM'; payload: { nodeId: string; fullResponse: string } }
+    | { type: 'DELETE_DOCUMENT'; payload: { documentId: string } }
+    | { type: 'EXPORT_DOCUMENTS'; payload: { format: 'json' | 'zip' } }
+    | { type: 'UPDATE_DOCUMENT'; payload: { documentId: string; updates: Partial<Document> } };
 
 type AppAction =
     | { type: 'CREATE_PROJECT'; payload: { description: string } }
@@ -170,6 +173,17 @@ function projectReducer(state: ProjectState, action: ProjectAction): ProjectStat
             const { documentId } = action.payload;
             const filteredDocs = state.documents.filter(d => d.id !== documentId);
             return {...state, documents: filteredDocs};
+        }
+        case 'UPDATE_DOCUMENT': {
+            const { documentId, updates } = action.payload;
+            const updatedDocs = state.documents.map(d => 
+                d.id === documentId ? { ...d, ...updates, updatedAt: new Date().toISOString() } : d
+            );
+            return {...state, documents: updatedDocs};
+        }
+        case 'EXPORT_DOCUMENTS': {
+            // Export action is handled in the component, just return state
+            return state;
         }
         default:
             return state;
