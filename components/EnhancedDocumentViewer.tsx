@@ -198,23 +198,27 @@ const ContentSection: React.FC<{
             <>
               {isSvgContent ? (
                 <ErrorBoundary fallback={<div className="text-red-400 p-4">Failed to render SVG content</div>}>
-                  <SvgMockupRenderer 
-                    svgContent={content}
-                    title={title}
-                    className="mb-4"
-                  />
+                  <div className="max-h-96 overflow-y-auto">
+                    <SvgMockupRenderer 
+                      svgContent={content}
+                      title={title}
+                      className="mb-4"
+                    />
+                  </div>
                 </ErrorBoundary>
               ) : isMermaidContent ? (
                 <ErrorBoundary fallback={<div className="text-red-400 p-4">Failed to render Mermaid diagram</div>}>
-                  <MermaidDiagramRenderer 
-                    mermaidCode={content}
-                    title={title}
-                    className="mb-4"
-                  />
+                  <div className="max-h-96 overflow-y-auto">
+                    <MermaidDiagramRenderer 
+                      mermaidCode={content}
+                      title={title}
+                      className="mb-4"
+                    />
+                  </div>
                 </ErrorBoundary>
               ) : isMarkdownContent ? (
                 <ErrorBoundary fallback={<div className="text-red-400 p-4">Failed to render Markdown content</div>}>
-                  <div className="bg-slate-900/50 rounded-md p-4">
+                  <div className="bg-slate-900/50 rounded-md p-4 max-h-96 overflow-y-auto">
                     <MarkdownRenderer 
                       content={content}
                       className="max-w-none"
