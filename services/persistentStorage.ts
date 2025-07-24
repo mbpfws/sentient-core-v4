@@ -268,10 +268,114 @@ For best results, use a Markdown editor that supports:
   }
 
   /**
-   * Clear all stored data
+   * Clear all stored data with optional backup
    */
-  clearStorage(): void {
-    localStorage.removeItem(this.STORAGE_KEY);
+  async clearStorage(createBackup: boolean = false): Promise<{ success: boolean; backupData?: string; error?: string }> {
+    try {
+      let backupData: string | undefined;
+      
+      if (createBackup) {
+        const storedData = localStorage.getItem(this.STORAGE_KEY);
+        if (storedData) {
+          backupData = storedData;
+        }
+      }
+      
+      localStorage.removeItem(this.STORAGE_KEY);
+      
+      return {
+        success: true,
+        backupData
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to clear storage'
+      };
+    }
+  }
+
+  /**
+   * Reset all application data with confirmation
+   */
+  async resetAllData(options: {
+    createBackup?: boolean;
+    clearApiKeys?: boolean;
+    clearUserPreferences?: boolean;
+  } = {}): Promise<{ success: boolean; backupData?: string; error?: string }> {
+    try {
+      const { createBackup = true, clearApiKeys = false, clearUserPreferences = false } = options;
+      let backupData: any = {};
+      
+      if (createBackup) {
+        // Create comprehensive backup
+        backupData = {
+          sentientCore: localStorage.getItem(this.STORAGE_KEY),
+          apiKey: clearApiKeys ? null : localStorage.getItem('gemini_api_key'),
+          userPrefs: clearUserPreferences ? null : localStorage.getItem('appState_v2'),
+          timestamp: new Date().toISOString(),
+          version: this.VERSION
+        };
+      }
+      
+      // Clear main application data
+      localStorage.removeItem(this.STORAGE_KEY);
+      localStorage.removeItem('appState_v2');
+      
+      if (clearApiKeys) {
+        localStorage.removeItem('gemini_api_key');
+      }
+      
+      if (clearUserPreferences) {
+        // Clear any other user preference keys
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith('user_') || key.startsWith('pref_'))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+      }
+      
+      return {
+        success: true,
+        backupData: createBackup ? JSON.stringify(backupData, null, 2) : undefined
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to reset application data'
+      };
+    }
+  }
+
+  /**
+   * Restore data from backup
+   */
+  async restoreFromBackup(backupData: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const backup = JSON.parse(backupData);
+      
+      if (backup.sentientCore) {
+        localStorage.setItem(this.STORAGE_KEY, backup.sentientCore);
+      }
+      
+      if (backup.apiKey) {
+        localStorage.setItem('gemini_api_key', backup.apiKey);
+      }
+      
+      if (backup.userPrefs) {
+        localStorage.setItem('appState_v2', backup.userPrefs);
+      }
+      
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to restore from backup'
+      };
+    }
   }
 
   /**
