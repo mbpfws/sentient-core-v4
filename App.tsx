@@ -1,27 +1,22 @@
-import React, { useState, useEffect, useCallback, useReducer, useMemo } from 'react';
 import { AppState, ProjectState, WorkflowStatus, NodeStatus, Document, GraphNode, NodeType, Language, ChatMessage } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { INITIAL_WORKFLOW_GRAPH, VIETNAMESE_WORKFLOW_GRAPH } from './constants';
 import { GeminiService } from './services/geminiService';
 import { PersistentStorageService } from './services/persistentStorage';
-import { locales } from './locales';
-import Header from './components/Header';
-import ProjectInput from './components/ProjectInput';
-import WorkflowVisualizer from './components/WorkflowVisualizer';
-import EnhancedWorkflowVisualizer from './components/EnhancedWorkflowVisualizer';
-import DocumentViewer from './components/DocumentViewer';
-import EnhancedDocumentViewer from './components/EnhancedDocumentViewer';
-import EdgeCaseSimulator from './components/EdgeCaseSimulator';
+import React, { useState, useCallback, useMemo, useReducer, useEffect } from 'react';
 import ProjectManager from './components/ProjectManager';
-import DocumentExplorer from './components/DocumentExplorer';
+import ProjectInput from './components/ProjectInput';
+import ApiKeyModal from './components/ApiKeyModal';
+import Header from './components/Header';
+import ErrorBoundary from './components/ErrorBoundary';
+import ResizableLayout from './components/ResizableLayout';
 import EnhancedDocumentExplorer from './components/EnhancedDocumentExplorer';
 import EnhancedDocumentManager from './components/EnhancedDocumentManager';
-import ChatPanel from './components/ChatPanel';
-import NodeTester from './components/NodeTester';
+import EnhancedDocumentViewer from './components/EnhancedDocumentViewer';
+import { locales } from './locales';
 import { LayoutGridIcon, NetworkIcon } from './components/icons';
-import ApiKeyModal from './components/ApiKeyModal';
-import ResizableLayout from './components/ResizableLayout';
-import ErrorBoundary from './components/ErrorBoundary';
+import EnhancedWorkflowVisualizer from './components/EnhancedWorkflowVisualizer';
+import EdgeCaseSimulator from './components/EdgeCaseSimulator';
 
 type ProjectAction =
     | { type: 'START_WORKFLOW'; payload: { description: string } }
@@ -39,13 +34,15 @@ type ProjectAction =
     | { type: 'END_CHAT_STREAM'; payload: { nodeId: string; fullResponse: string } }
     | { type: 'DELETE_DOCUMENT'; payload: { documentId: string } }
     | { type: 'EXPORT_DOCUMENTS'; payload: { format: 'json' | 'zip' } }
-    | { type: 'UPDATE_DOCUMENT'; payload: { documentId: string; updates: Partial<Document> } };
+    | { type: 'UPDATE_DOCUMENT'; payload: { documentId: string; updates: Partial<Document> } }
+    | { type: 'RESET_STATE' };
 
 type AppAction =
     | { type: 'CREATE_PROJECT'; payload: { description: string } }
     | { type: 'SELECT_PROJECT'; payload: { projectId: string | null } }
     | { type: 'DELETE_PROJECT'; payload: { projectId: string } }
-    | { type: 'DISPATCH_TO_PROJECT'; payload: { projectId: string; action: ProjectAction } };
+    | { type: 'DISPATCH_TO_PROJECT'; payload: { projectId: string; action: ProjectAction } }
+    | { type: 'RESET_STATE' };
 
 
 const initialProjectState: Omit<ProjectState, 'id' | 'description' | 'language' | 'workflow'> = {
@@ -79,7 +76,6 @@ function upsertDocument(docs: Document[], newDoc: Partial<Document> & { nodeId: 
         const node = workflow.nodes.find(n => n.id === nodeId);
         const fullNewDoc: Document = {
             id: `doc_${nodeId}_${Date.now()}`,
-            nodeId,
             title: node!.label,
             content: '',
             version: 1,
@@ -91,6 +87,8 @@ function upsertDocument(docs: Document[], newDoc: Partial<Document> & { nodeId: 
             tags: [],
             category: node!.nodeType || 'document',
             priority: 'medium' as const,
+            isApproved: false,
+            approvalStage: 'outline' as const,
             metadata: {
                 wordCount: 0,
                 estimatedReadTime: 0,
@@ -100,7 +98,8 @@ function upsertDocument(docs: Document[], newDoc: Partial<Document> & { nodeId: 
                 complexity: 'simple' as const,
                 completionPercentage: 0
             },
-            ...newDoc
+            ...newDoc,
+            nodeId
         };
         return [...docs, fullNewDoc];
     }
@@ -246,13 +245,24 @@ function appReducer(state: AppState, action: AppAction): AppState {
 
 
 const App: React.FC = () => {
-    const [storedState, setStoredState] = useLocalStorage<AppState>('appState_v2', { projects: [], activeProjectId: null });
+    const [storedState, setStoredState] = useLocalStorage<AppState>('appState_v2', { 
+        projects: [], 
+        activeProjectId: null,
+        projectHierarchy: [],
+        documentCategories: [],
+        globalSettings: {
+            theme: 'dark' as const,
+            language: 'en' as const,
+            autoSave: true,
+            defaultView: 'graph' as const
+        }
+    });
     const [state, dispatch] = useReducer(appReducer, storedState);
     const [viewMode, setViewMode] = useState<'workflow' | 'explorer' | 'tester'>('workflow');
     const [isCreatingProject, setIsCreatingProject] = useState(false);
     
     // Persistent Storage Management
-    const [storageError, setStorageError] = useState<string | null>(null);
+    const [, setStorageError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const storageService = useMemo(() => PersistentStorageService.getInstance(), []);
     
@@ -639,9 +649,8 @@ Question: "${message}"
                                     )}
                                 </div>
                             }
-                            defaultLeftWidth={70}
-                            minLeftWidth={60}
-                            maxLeftWidth={80}
+                            defaultLeftSize={70}
+                            defaultRightSize={30}
                         />
                     </div>
                 )}
@@ -649,56 +658,77 @@ Question: "${message}"
                     <div className="h-[calc(100vh-12rem)]">
                         <ResizableLayout
                             leftPanel={
-                                <EnhancedDocumentExplorer 
-                                    workflow={activeProject.workflow}
-                                    documents={activeProject.documents}
-                                    projectId={activeProject.id}
-                                    onSelectNode={handleSetActiveNode}
-                                    activeNodeId={activeProject.activeNodeId}
-                                    t={t}
-                                    className="h-full"
-                                />
-                            }
-                            rightPanel={
-                                <div className="h-full flex flex-col">
-                                    <div className="flex-1 overflow-hidden">
-                                        <ErrorBoundary>
-                                            <EnhancedDocumentManager 
-                                                documents={activeProject.documents}
-                                                nodes={activeProject.workflow.nodes}
-                                                onDeleteDocument={(documentId) => {
-                                                    if (window.confirm('Are you sure you want to delete this document?')) {
-                                                        dispatch({ 
-                                                            type: 'DISPATCH_TO_PROJECT', 
-                                                            payload: { 
-                                                                projectId: activeProject.id, 
-                                                                action: { type: 'DELETE_DOCUMENT', payload: { documentId } }
-                                                            } 
-                                                        });
-                                                    }
-                                                }}
-                                                onExportDocuments={async (format) => {
-                                                    try {
-                                                        const result = await storageService.exportDocuments(activeProject.documents, format);
-                                                        if (!result.success) {
-                                                            setStorageError(`Export failed: ${result.error}`);
-                                                            alert(`Export failed: ${result.error}`);
-                                                        } else {
-                                                            // Clear any previous errors on successful export
-                                                            setStorageError(null);
-                                                        }
-                                                    } catch (error) {
-                                                        const errorMessage = error instanceof Error ? error.message : 'Unknown export error';
-                                                        setStorageError(`Export failed: ${errorMessage}`);
-                                                        alert(`Export failed: ${errorMessage}`);
-                                                    }
-                                                }}
-                                                className="h-full"
-                                            />
-                                        </ErrorBoundary>
-                                    </div>
+                                <div className="h-full">
+                                    <ErrorBoundary>
+                                        <EnhancedDocumentExplorer 
+                                            workflow={activeProject.workflow}
+                                            documents={activeProject.documents}
+                                            projectId={activeProject.id}
+                                            onSelectNode={(nodeId) => {
+                                                dispatch({ 
+                                                    type: 'DISPATCH_TO_PROJECT', 
+                                                    payload: { 
+                                                        projectId: activeProject.id, 
+                                                        action: { type: 'SET_ACTIVE_NODE', payload: { nodeId } }
+                                                    } 
+                                                });
+                                            }}
+                                            activeNodeId={activeProject.activeNodeId}
+                                            onDocumentSelect={(document) => {
+                                                dispatch({ 
+                                                    type: 'DISPATCH_TO_PROJECT', 
+                                                    payload: { 
+                                                        projectId: activeProject.id, 
+                                                        action: { type: 'UPDATE_DOCUMENT', payload: { documentId: document.id, updates: document } }
+                                                    } 
+                                                });
+                                            }}
+                                            t={t}
+                                            className="h-full"
+                                        />
+                                    </ErrorBoundary>
                                 </div>
                             }
+                            rightPanel={
+                                <div className="h-full">
+                                    <ErrorBoundary>
+                                        <EnhancedDocumentManager 
+                                            documents={activeProject.documents}
+                                            nodes={activeProject.workflow.nodes}
+                                            onDeleteDocument={(documentId: string) => {
+                                                if (window.confirm('Are you sure you want to delete this document?')) {
+                                                    dispatch({ 
+                                                        type: 'DISPATCH_TO_PROJECT', 
+                                                        payload: { 
+                                                            projectId: activeProject.id, 
+                                                            action: { type: 'DELETE_DOCUMENT', payload: { documentId } }
+                                                        } 
+                                                    });
+                                                }
+                                            }}
+                                            onExportDocuments={async (format: 'json' | 'zip') => {
+                                                try {
+                                                    const result = await storageService.exportDocuments(activeProject.documents, format);
+                                                    if (!result.success) {
+                                                        setStorageError(`Export failed: ${result.error}`);
+                                                        alert(`Export failed: ${result.error}`);
+                                                    } else {
+                                                        // Clear any previous errors on successful export
+                                                        setStorageError(null);
+                                                    }
+                                                } catch (error) {
+                                                    const errorMessage = error instanceof Error ? error.message : 'Unknown export error';
+                                                    setStorageError(`Export failed: ${errorMessage}`);
+                                                    alert(`Export failed: ${errorMessage}`);
+                                                }
+                                            }}
+                                            className="h-full"
+                                        />
+                                    </ErrorBoundary>
+                                </div>
+                            }
+                            defaultLeftSize={40}
+                            defaultRightSize={60}
                             bottomPanel={
                                 activeNode && (
                                     <ErrorBoundary>
@@ -716,12 +746,7 @@ Question: "${message}"
                                     </ErrorBoundary>
                                 )
                             }
-                            defaultLeftWidth={40}
-                            minLeftWidth={30}
-                            maxLeftWidth={60}
-                            defaultBottomHeight={40}
-                            minBottomHeight={30}
-                            maxBottomHeight={60}
+                            defaultBottomSize={40}
                         />
                     </div>
                 )}
@@ -736,9 +761,9 @@ Question: "${message}"
             }
             return <ProjectManager
                 projects={state.projects}
-                onSelectProject={(projectId) => dispatch({ type: 'SELECT_PROJECT', payload: { projectId } })}
+                onSelectProject={(projectId: string) => dispatch({ type: 'SELECT_PROJECT', payload: { projectId } })}
                 onCreateProject={() => setIsCreatingProject(true)}
-                onDeleteProject={(projectId) => {
+                onDeleteProject={(projectId: string) => {
                     if (window.confirm(t.deleteProjectConfirmation)) {
                         dispatch({ type: 'DELETE_PROJECT', payload: { projectId } });
                     }
