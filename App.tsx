@@ -166,6 +166,11 @@ function projectReducer(state: ProjectState, action: ProjectAction): ProjectStat
             });
             return {...state, documents: newDocs, isStreaming: false, streamingSource: null};
         }
+        case 'DELETE_DOCUMENT': {
+            const { documentId } = action.payload;
+            const filteredDocs = state.documents.filter(d => d.id !== documentId);
+            return {...state, documents: filteredDocs};
+        }
         default:
             return state;
     }
@@ -595,26 +600,45 @@ Question: "${message}"
                                                 onDeleteDocument={(documentId) => {
                                                     if (window.confirm('Are you sure you want to delete this document?')) {
                                                         dispatch({ 
-                                                            type: 'DELETE_DOCUMENT', 
-                                                            payload: { projectId: activeProject.id, documentId } 
+                                                            type: 'DISPATCH_TO_PROJECT', 
+                                                            payload: { 
+                                                                projectId: activeProject.id, 
+                                                                action: { type: 'DELETE_DOCUMENT', payload: { documentId } }
+                                                            } 
                                                         });
                                                     }
                                                 }}
                                                 onExportDocuments={(format) => {
                                                     // Export documents in the specified format
-                                                    const exportData = format === 'json' 
-                                                        ? JSON.stringify(activeProject.documents, null, 2)
-                                                        : activeProject.documents;
-                                                    
-                                                    const blob = new Blob([exportData], { 
-                                                        type: format === 'json' ? 'application/json' : 'application/zip' 
-                                                    });
-                                                    const url = URL.createObjectURL(blob);
-                                                    const a = document.createElement('a');
-                                                    a.href = url;
-                                                    a.download = `${activeProject.name}_documents.${format}`;
-                                                    a.click();
-                                                    URL.revokeObjectURL(url);
+                                                    if (format === 'json') {
+                                                        const exportData = JSON.stringify(activeProject.documents, null, 2);
+                                                        const blob = new Blob([exportData], { type: 'application/json' });
+                                                        const url = URL.createObjectURL(blob);
+                                                        const a = document.createElement('a');
+                                                        a.href = url;
+                                                        a.download = `${activeProject.description}_documents.json`;
+                                                        a.click();
+                                                        URL.revokeObjectURL(url);
+                                                    } else {
+                                                        // For ZIP format, create individual markdown files
+                                                        import('jszip').then(({ default: JSZip }) => {
+                                                            const zip = new JSZip();
+                                                            activeProject.documents.forEach(doc => {
+                                                                const node = activeProject.workflow.nodes.find(n => n.id === doc.nodeId);
+                                                                const fileName = `${node?.label || doc.nodeId}.md`;
+                                                                const content = `# ${node?.label || 'Document'}\n\n${doc.content || doc.outline || ''}`;
+                                                                zip.file(fileName, content);
+                                                            });
+                                                            zip.generateAsync({ type: 'blob' }).then(blob => {
+                                                                const url = URL.createObjectURL(blob);
+                                                                const a = document.createElement('a');
+                                                                a.href = url;
+                                                                a.download = `${activeProject.description}_documents.zip`;
+                                                                a.click();
+                                                                URL.revokeObjectURL(url);
+                                                            });
+                                                        });
+                                                    }
                                                 }}
                                                 className="h-full"
                                             />
