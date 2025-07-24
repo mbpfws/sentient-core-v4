@@ -17,169 +17,159 @@ export class IntelligentErrorCorrectionService {
   }
 
   /**
-   * Analyzes and corrects Mermaid syntax errors
+   * Analyzes and corrects Mermaid syntax errors using rule-based fixes
    */
-  async correctMermaidSyntax(
+  correctMermaidSyntax(
     errorMessage: string,
     problematicCode: string,
     context?: string
-  ): Promise<ErrorCorrectionResult> {
-    const prompt = `
-You are an expert Mermaid diagram syntax corrector. Analyze the following Mermaid code that failed to render and fix all syntax errors.
+  ): ErrorCorrectionResult {
+    const corrections: string[] = [];
+    let correctedCode = problematicCode.trim();
 
-ERROR MESSAGE: ${errorMessage}
-
-PROBLEMATIC MERMAID CODE:
-\`\`\`mermaid
-${problematicCode}
-\`\`\`
-
-${context ? `CONTEXT: ${context}` : ''}
-
-REQUIREMENTS:
-1. Fix all syntax errors while preserving the diagram's intent
-2. Ensure proper Mermaid syntax (graph TD, flowchart, sequenceDiagram, etc.)
-3. Fix node naming, connections, and formatting issues
-4. Remove any invalid characters or malformed statements
-5. Maintain the original diagram structure and meaning
-
-Return ONLY valid Mermaid code without markdown formatting or explanations.
-`;
-
-    try {
-      const response = await this.aiService.generateContentWithStreaming(prompt, () => {}, () => {});
-      const correctedCode = this.cleanMermaidCode(response);
-      
-      // Validate the corrected code
-      const isValid = await this.validateMermaidSyntax(correctedCode);
-      
-      return {
-        correctedContent: correctedCode,
-        errorType: 'mermaid',
-        corrections: this.extractCorrections(problematicCode, correctedCode),
-        confidence: isValid ? 0.9 : 0.6,
-        requiresRegeneration: !isValid
-      };
-    } catch (error) {
-      console.error('Mermaid correction failed:', error);
-      return {
-        correctedContent: this.generateFallbackMermaid(context || 'Diagram'),
-        errorType: 'mermaid',
-        corrections: ['Generated fallback diagram due to correction failure'],
-        confidence: 0.3,
-        requiresRegeneration: true
-      };
+    // Remove markdown code blocks if present
+    if (correctedCode.includes('```mermaid')) {
+      correctedCode = correctedCode.replace(/```mermaid\n?/g, '').replace(/```\n?/g, '').trim();
+      corrections.push('Removed markdown code block formatting');
     }
+
+    // Fix common Mermaid syntax issues
+    const fixes = this.applyMermaidFixes(correctedCode);
+    correctedCode = fixes.code;
+    corrections.push(...fixes.corrections);
+
+    // Validate the corrected code
+    const isValid = this.validateMermaidSyntax(correctedCode);
+    
+    if (!isValid) {
+      // Generate fallback if still invalid
+      correctedCode = this.generateFallbackMermaid(context || 'Diagram');
+      corrections.push('Generated fallback diagram due to persistent syntax errors');
+    }
+
+    return {
+      correctedContent: correctedCode,
+      errorType: 'mermaid',
+      corrections,
+      confidence: isValid ? 0.8 : 0.4,
+      requiresRegeneration: !isValid
+    };
   }
 
   /**
-   * Analyzes and corrects SVG generation errors
+   * Analyzes and corrects SVG generation errors using rule-based fixes
    */
-  async correctSvgGeneration(
+  correctSvgGeneration(
     errorMessage: string,
     problematicSvg: string,
     context?: string
-  ): Promise<ErrorCorrectionResult> {
-    const prompt = `
-You are an expert SVG generator and corrector. Analyze the following SVG code that failed to render and fix all issues.
+  ): ErrorCorrectionResult {
+    const corrections: string[] = [];
+    let correctedSvg = problematicSvg.trim();
 
-ERROR MESSAGE: ${errorMessage}
+    // Apply SVG fixes
+    const fixes = this.applySvgFixes(correctedSvg);
+    correctedSvg = fixes.code;
+    corrections.push(...fixes.corrections);
 
-PROBLEMATIC SVG CODE:
-${problematicSvg}
-
-${context ? `CONTEXT: ${context}` : ''}
-
-REQUIREMENTS:
-1. Generate valid, well-formed SVG markup
-2. Fix any malformed tags, attributes, or structure issues
-3. Ensure proper viewBox, width, and height attributes
-4. Create a clean, professional UI mockup if this is for interface design
-5. Use proper SVG elements (rect, circle, text, path, etc.)
-6. Maintain responsive design principles
-
-Return ONLY valid SVG code without markdown formatting or explanations.
-`;
-
-    try {
-      const response = await this.aiService.generateContent(prompt);
-      const correctedSvg = this.cleanSvgCode(response);
-      
-      // Validate the corrected SVG
-      const isValid = this.validateSvgSyntax(correctedSvg);
-      
-      return {
-        correctedContent: correctedSvg,
-        errorType: 'svg',
-        corrections: this.extractCorrections(problematicSvg, correctedSvg),
-        confidence: isValid ? 0.85 : 0.5,
-        requiresRegeneration: !isValid
-      };
-    } catch (error) {
-      console.error('SVG correction failed:', error);
-      return {
-        correctedContent: this.generateFallbackSvg(context || 'UI Mockup'),
-        errorType: 'svg',
-        corrections: ['Generated fallback SVG due to correction failure'],
-        confidence: 0.3,
-        requiresRegeneration: true
-      };
+    // Validate the corrected SVG
+    const isValid = this.validateSvgSyntax(correctedSvg);
+    
+    if (!isValid) {
+      // Generate fallback if still invalid
+      correctedSvg = this.generateFallbackSvg(context || 'UI Mockup');
+      corrections.push('Generated fallback SVG due to persistent syntax errors');
     }
+
+    return {
+      correctedContent: correctedSvg,
+      errorType: 'svg',
+      corrections,
+      confidence: isValid ? 0.7 : 0.4,
+      requiresRegeneration: !isValid
+    };
   }
 
   /**
-   * Clean and extract Mermaid code from AI response
+   * Apply common Mermaid syntax fixes
    */
-  private cleanMermaidCode(response: string): string {
-    // Remove markdown code blocks if present
-    let cleaned = response.replace(/```mermaid\n?/g, '').replace(/```\n?/g, '');
-    
-    // Remove any leading/trailing whitespace
-    cleaned = cleaned.trim();
-    
-    // Ensure it starts with a valid Mermaid diagram type
+  private applyMermaidFixes(code: string): { code: string; corrections: string[] } {
+    const corrections: string[] = [];
+    let fixedCode = code;
+
+    // Ensure proper diagram type declaration
     const mermaidKeywords = [
       'graph TD', 'graph LR', 'graph TB', 'graph RL',
       'flowchart TD', 'flowchart LR', 'flowchart TB', 'flowchart RL',
       'sequenceDiagram', 'classDiagram', 'stateDiagram',
       'erDiagram', 'journey', 'gantt', 'pie title', 'gitgraph'
     ];
-    
+
     const hasValidStart = mermaidKeywords.some(keyword => 
-      cleaned.startsWith(keyword)
+      fixedCode.trim().startsWith(keyword)
     );
-    
-    if (!hasValidStart && !cleaned.includes('sequenceDiagram')) {
-      // Default to flowchart if no valid start detected
-      cleaned = `flowchart TD\n${cleaned}`;
+
+    if (!hasValidStart) {
+      fixedCode = `flowchart TD\n${fixedCode}`;
+      corrections.push('Added proper diagram type declaration');
     }
-    
-    return cleaned;
+
+    // Fix common syntax issues
+    fixedCode = fixedCode
+      .replace(/[\u201C\u201D]/g, '"') // Replace smart quotes
+      .replace(/[\u2018\u2019]/g, "'") // Replace smart apostrophes
+      .replace(/\s+-->/g, ' -->') // Fix arrow spacing
+      .replace(/-->\s+/g, '--> ') // Fix arrow spacing
+      .replace(/\|([^|]+)\|/g, '"$1"') // Fix node labels
+      .replace(/\[([^\]]+)\]/g, '[$1]') // Ensure proper brackets
+      .replace(/\{([^}]+)\}/g, '{$1}') // Ensure proper braces
+      .replace(/\(([^)]+)\)/g, '($1)'); // Ensure proper parentheses
+
+    if (fixedCode !== code) {
+      corrections.push('Applied syntax corrections and formatting improvements');
+    }
+
+    return { code: fixedCode, corrections };
   }
 
   /**
-   * Clean and extract SVG code from AI response
+   * Apply common SVG syntax fixes
    */
-  private cleanSvgCode(response: string): string {
-    // Extract SVG content between <svg> tags
-    const svgMatch = response.match(/<svg[\s\S]*?<\/svg>/i);
-    if (svgMatch) {
-      return svgMatch[0];
+  private applySvgFixes(svg: string): { code: string; corrections: string[] } {
+    const corrections: string[] = [];
+    let fixedSvg = svg;
+
+    // Extract SVG content if wrapped in other content
+    const svgMatch = fixedSvg.match(/<svg[\s\S]*?<\/svg>/i);
+    if (svgMatch && svgMatch[0] !== fixedSvg) {
+      fixedSvg = svgMatch[0];
+      corrections.push('Extracted SVG content from surrounding text');
     }
-    
-    // If no complete SVG found, try to construct one
-    let cleaned = response.trim();
-    if (!cleaned.startsWith('<svg')) {
-      cleaned = `<svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">${cleaned}</svg>`;
+
+    // Ensure proper SVG structure
+    if (!fixedSvg.includes('<svg')) {
+      fixedSvg = `<svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">${fixedSvg}</svg>`;
+      corrections.push('Added proper SVG wrapper');
     }
-    
-    return cleaned;
+
+    // Fix common SVG issues
+    if (!fixedSvg.includes('viewBox') && !fixedSvg.includes('width')) {
+      fixedSvg = fixedSvg.replace('<svg', '<svg viewBox="0 0 400 300"');
+      corrections.push('Added viewBox attribute');
+    }
+
+    if (!fixedSvg.includes('xmlns')) {
+      fixedSvg = fixedSvg.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+      corrections.push('Added XML namespace');
+    }
+
+    return { code: fixedSvg, corrections };
   }
 
   /**
    * Validate Mermaid syntax using basic checks
    */
-  private async validateMermaidSyntax(code: string): Promise<boolean> {
+  private validateMermaidSyntax(code: string): boolean {
     try {
       // Basic syntax validation
       const lines = code.split('\n').filter(line => line.trim());
@@ -206,34 +196,10 @@ Return ONLY valid SVG code without markdown formatting or explanations.
       // Basic SVG validation
       return svg.includes('<svg') && svg.includes('</svg>') && 
              !svg.includes('<script') && // Security check
-             svg.includes('viewBox') || svg.includes('width');
+             (svg.includes('viewBox') || svg.includes('width'));
     } catch {
       return false;
     }
-  }
-
-  /**
-   * Extract corrections made between original and corrected code
-   */
-  private extractCorrections(original: string, corrected: string): string[] {
-    const corrections: string[] = [];
-    
-    if (original.length !== corrected.length) {
-      corrections.push('Adjusted content length and structure');
-    }
-    
-    if (original.includes('```') && !corrected.includes('```')) {
-      corrections.push('Removed markdown code block formatting');
-    }
-    
-    if (!original.match(/^(graph|flowchart|sequenceDiagram)/m) && 
-        corrected.match(/^(graph|flowchart|sequenceDiagram)/m)) {
-      corrections.push('Added proper diagram type declaration');
-    }
-    
-    corrections.push('Applied syntax corrections and formatting improvements');
-    
-    return corrections;
   }
 
   /**
