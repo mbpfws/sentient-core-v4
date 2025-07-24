@@ -69,8 +69,8 @@ const EnhancedDocumentExplorer: React.FC<EnhancedDocumentExplorerProps> = ({
   // Early return if workflow is not available
   if (!workflow) {
     return (
-      <div className={`flex items-center justify-center h-64 text-gray-500 ${className}`}>
-        <div className="text-center">
+      <div className={`bg-slate-900 border border-slate-700 rounded-lg flex flex-col h-full overflow-y-auto ${className}`}>
+        <div className="text-center p-4">
           <p>{t?.noWorkflow || 'No workflow available'}</p>
           <p className="text-sm mt-2">{t?.loadingWorkflow || 'Loading workflow...'}</p>
         </div>

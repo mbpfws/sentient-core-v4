@@ -735,7 +735,7 @@ Question: "${message}"
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 text-slate-200 font-sans pt-20">
+        <div className="min-h-screen bg-slate-900 text-slate-200 font-sans flex flex-col">
             <Header
                 onBackToProjects={() => {
                   dispatch({ type: 'SELECT_PROJECT', payload: { projectId: null } });
@@ -745,6 +745,19 @@ Question: "${message}"
                 onReset={activeProject?.workflowStatus !== WorkflowStatus.IDLE ? handleReset : undefined}
                 t={t} 
                 onOpenSettings={() => setIsApiKeyModalOpen(true)}
+                onStorageReset={async () => {
+                    if (window.confirm('Are you sure you want to reset all storage? This will clear all projects and data.')) {
+                        try {
+                            await storageService.resetStorage();
+                            dispatch({ type: 'RESET_STATE' });
+                            setStorageError(null);
+                        } catch (error) {
+                            const errorMessage = error instanceof Error ? error.message : 'Failed to reset storage';
+                            setStorageError(errorMessage);
+                            alert(errorMessage);
+                        }
+                    }
+                }}
             />
             {isApiKeyModalOpen && (
                 <ApiKeyModal 
