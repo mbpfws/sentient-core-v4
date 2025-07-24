@@ -13,7 +13,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onReset, onBackToProjects, activeProjectId, t, onOpenSettings, onStorageReset }) => {
     return (
-        <header className="bg-slate-900/80 backdrop-blur-sm border-b border-slate-700 p-4 flex justify-between items-center fixed top-0 left-0 right-0 z-50">
+        <header className="bg-slate-900/80 backdrop-blur-sm border-b border-slate-700 p-4 flex justify-between items-center relative z-50">
             <div className="flex items-center gap-3">
                 <BotIcon />
                 <h1 className="text-xl font-bold text-slate-100">{t.headerTitle}</h1>

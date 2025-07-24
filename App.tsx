@@ -611,7 +611,7 @@ Question: "${message}"
                 </div>
 
                 {viewMode === 'workflow' && (
-                    <div className="h-[calc(100vh-12rem)]">
+                    <div className="h-[calc(100vh-8rem)]">
                         <ResizableLayout
                             leftPanel={
                                 <EnhancedWorkflowVisualizer 
@@ -655,7 +655,7 @@ Question: "${message}"
                     </div>
                 )}
                 {viewMode === 'explorer' && (
-                    <div className="h-[calc(100vh-12rem)]">
+                    <div className="h-[calc(100vh-8rem)]">
                         <ResizableLayout
                             leftPanel={
                                 <div className="h-full">
