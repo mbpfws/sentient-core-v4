@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import mermaid from 'mermaid';
 import { saveAs } from 'file-saver';
 import html2canvas from 'html2canvas';
-import { DownloadIcon, RefreshIcon, CodeIcon, EyeIcon, AlertTriangleIcon } from './icons';
+import { DownloadIcon, RefreshIcon, CodeIcon, EyeIcon } from './icons';
 import { IntelligentErrorCorrectionService } from '../services/intelligentErrorCorrection';
 
 interface MermaidDiagramRendererProps {
@@ -111,12 +111,10 @@ const MermaidDiagramRenderer: React.FC<MermaidDiagramRendererProps> = ({
       gantt: {
         titleTopMargin: 25,
         barHeight: 20,
-        fontFamily: 'Inter, system-ui, sans-serif',
         fontSize: 11,
         gridLineStartPadding: 35,
-        bottomPadding: 25,
-        leftPadding: 75,
-        rightPadding: 35
+        bottomPadding: 4,
+        rightPadding: 100
       }
     });
   }, []);
@@ -139,14 +137,44 @@ const MermaidDiagramRenderer: React.FC<MermaidDiagramRendererProps> = ({
           ref.innerHTML = svg;
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : 'Failed to render Mermaid diagram';
-          setError(errorMsg);
-          onError?.(errorMsg);
-          ref.innerHTML = `
-            <div class="text-red-400 p-4 text-center">
-              <div class="font-semibold mb-2">Diagram Rendering Error</div>
-              <div class="text-sm text-red-300">${errorMsg}</div>
-            </div>
-          `;
+          
+          // Apply intelligent error correction
+          const correctionService = IntelligentErrorCorrectionService.getInstance();
+          const correctionResult = correctionService.correctMermaidSyntax(
+            errorMsg,
+            parsedCodes[i],
+            title
+          );
+          
+          // Try to render the corrected code
+          try {
+            const correctedDiagramId = `mermaid-corrected-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${i}`;
+            const { svg } = await mermaid.render(correctedDiagramId, correctionResult.correctedContent);
+            ref.innerHTML = `
+              <div class="border border-yellow-500/30 rounded-lg p-3 mb-2 bg-yellow-500/10">
+                <div class="text-yellow-400 text-xs font-medium mb-1">Auto-corrected diagram</div>
+                <div class="text-yellow-300 text-xs">${correctionResult.corrections.join(', ')}</div>
+              </div>
+              ${svg}
+            `;
+          } catch (correctionErr) {
+            // If correction also fails, show contained error message
+            setError(errorMsg);
+            onError?.(errorMsg);
+            ref.innerHTML = `
+              <div class="bg-slate-800/50 border border-red-500/30 rounded-lg p-4 text-center max-w-full overflow-hidden">
+                <div class="text-red-400 font-semibold mb-2">Diagram Rendering Error</div>
+                <div class="text-red-300 text-sm mb-3">${errorMsg}</div>
+                <div class="text-slate-400 text-xs">Auto-correction attempted but failed</div>
+                <button 
+                  onclick="this.parentElement.style.display='none'" 
+                  class="mt-2 px-3 py-1 bg-red-600/20 text-red-300 rounded text-xs hover:bg-red-600/30 transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
+            `;
+          }
         }
       }
       setIsRendered(true);
