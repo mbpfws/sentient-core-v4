@@ -379,6 +379,22 @@ For best results, use a Markdown editor that supports:
   }
 
   /**
+   * Reset storage
+   */
+  async resetStorage(): Promise<{ success: boolean; error?: string }> {
+    try {
+      localStorage.clear();
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to reset storage:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown reset error' 
+      };
+    }
+  }
+
+  /**
    * Get storage usage information
    */
   getStorageInfo(): { used: number; available: number; percentage: number } {

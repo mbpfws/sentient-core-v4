@@ -84,7 +84,22 @@ function upsertDocument(docs: Document[], newDoc: Partial<Document> & { nodeId: 
             content: '',
             version: 1,
             createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
             chatHistory: [],
+            childDocumentIds: [],
+            relatedDocumentIds: [],
+            tags: [],
+            category: node!.nodeType || 'document',
+            priority: 'medium' as const,
+            metadata: {
+                wordCount: 0,
+                estimatedReadTime: 0,
+                lastModifiedBy: 'system',
+                reviewers: [],
+                status: 'DRAFT' as any,
+                complexity: 'simple' as const,
+                completionPercentage: 0
+            },
             ...newDoc
         };
         return [...docs, fullNewDoc];
