@@ -14,6 +14,7 @@ import SvgMockupRenderer from './SvgMockupRenderer';
 import MermaidDiagramRenderer from './MermaidDiagramRenderer';
 import MarkdownRenderer from './MarkdownRenderer';
 import ErrorBoundary from './ErrorBoundary';
+import ContextualChatPanel from './ContextualChatPanel';
 
 interface EnhancedDocumentViewerProps {
   node: GraphNode;
@@ -25,6 +26,9 @@ interface EnhancedDocumentViewerProps {
   onReject: (nodeId: string, stage: 'outline' | 'content', feedback: string) => void;
   t: any;
   className?: string;
+  allDocuments?: Document[]; // For contextual chat
+  apiKey?: string; // For contextual chat
+  onChatUpdate?: (nodeId: string, chatHistory: any[]) => void; // For contextual chat
 }
 
 const ReviewControls: React.FC<{ 
@@ -243,7 +247,10 @@ const EnhancedDocumentViewer: React.FC<EnhancedDocumentViewerProps> = ({
   onApprove, 
   onReject, 
   t,
-  className = ''
+  className = '',
+  allDocuments,
+  apiKey,
+  onChatUpdate
 }) => {
   // Add safety checks
   if (!node) {
@@ -282,7 +289,9 @@ const EnhancedDocumentViewer: React.FC<EnhancedDocumentViewerProps> = ({
         <p className="text-sm text-slate-400">{node.details}</p>
       </div>
       
-      <div className="flex-grow p-4 overflow-y-auto space-y-4">
+      <div className="flex flex-grow">
+        {/* Document Content Panel */}
+        <div className="flex-1 p-4 overflow-y-auto space-y-4 border-r border-slate-700">
         {isSynthesisNode ? (
           <ContentSection
             title={t.synthesizedBrief}
@@ -338,14 +347,34 @@ const EnhancedDocumentViewer: React.FC<EnhancedDocumentViewerProps> = ({
             </div>
           </div>
         )}
+        
+        {/* Review Controls within Document Panel */}
+        {node.status === NodeStatus.AWAITING_OUTLINE_REVIEW && (
+          <div className="mt-4">
+            <ReviewControls stage="outline" nodeId={node.id} onApprove={onApprove} onReject={onReject} t={t} />
+          </div>
+        )}
+        {node.isHumanInLoop && node.status === NodeStatus.AWAITING_REVIEW && (
+          <div className="mt-4">
+            <ReviewControls stage="content" nodeId={node.id} onApprove={onApprove} onReject={onReject} t={t} />
+          </div>
+        )}
+        </div>
+        
+        {/* Contextual Chat Panel */}
+        {document && allDocuments && apiKey && (
+          <div className="w-96 flex-shrink-0">
+            <ContextualChatPanel
+              document={document}
+              allDocuments={allDocuments}
+              apiKey={apiKey}
+              onChatUpdate={(chatHistory) => onChatUpdate?.(node.id, chatHistory)}
+              className="h-full"
+              t={t}
+            />
+          </div>
+        )}
       </div>
-
-      {node.status === NodeStatus.AWAITING_OUTLINE_REVIEW && (
-        <ReviewControls stage="outline" nodeId={node.id} onApprove={onApprove} onReject={onReject} t={t} />
-      )}
-      {node.isHumanInLoop && node.status === NodeStatus.AWAITING_REVIEW && (
-        <ReviewControls stage="content" nodeId={node.id} onApprove={onApprove} onReject={onReject} t={t} />
-      )}
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { CheckCircleIcon, XCircleIcon } from './icons';
 import SvgMockupRenderer from './SvgMockupRenderer';
 import MermaidDiagramRenderer from './MermaidDiagramRenderer';
 import MarkdownRenderer from './MarkdownRenderer';
+import ContextualChatPanel from './ContextualChatPanel';
 
 interface DocumentViewerProps {
   node: GraphNode;
@@ -14,6 +15,9 @@ interface DocumentViewerProps {
   onApprove: (nodeId: string, stage: 'outline' | 'content') => void;
   onReject: (nodeId: string, stage: 'outline' | 'content', feedback: string) => void;
   t: any; // Translation object
+  allDocuments?: Document[]; // For contextual chat
+  apiKey?: string; // For contextual chat
+  onChatUpdate?: (nodeId: string, chatHistory: any[]) => void; // For contextual chat
 }
 
 const ReviewControls: React.FC<{ stage: 'outline' | 'content', nodeId: string, onApprove: DocumentViewerProps['onApprove'], onReject: DocumentViewerProps['onReject'], t: any }> = ({ stage, nodeId, onApprove, onReject, t }) => {
@@ -159,7 +163,7 @@ const DocumentContentDisplay: React.FC<{
 };
 
 
-const DocumentViewer: React.FC<DocumentViewerProps> = ({ node, document, streamingContent, streamingSource, isStreaming, onApprove, onReject, t }) => {
+const DocumentViewer: React.FC<DocumentViewerProps> = ({ node, document, streamingContent, streamingSource, isStreaming, onApprove, onReject, t, allDocuments, apiKey, onChatUpdate }) => {
 
   const isSynthesisNode = node.nodeType === NodeType.SYNTHESIS;
   const synthesisContent = document?.content || '';
@@ -177,7 +181,9 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ node, document, streami
         <p className="text-sm text-slate-400">{node.details}</p>
       </div>
       
-      <div className="flex-grow p-6 overflow-y-auto">
+      <div className="flex flex-grow">
+        {/* Document Content Panel */}
+        <div className="flex-1 p-6 overflow-y-auto border-r border-slate-700">
         {isSynthesisNode ? (
             <DocumentContentDisplay 
               title={t.synthesizedBrief} 
@@ -222,14 +228,34 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ node, document, streami
             </ul>
           </div>
         )}
+        
+        {/* Review Controls within Document Panel */}
+        {node.status === NodeStatus.AWAITING_OUTLINE_REVIEW && (
+          <div className="mt-4">
+            <ReviewControls stage="outline" nodeId={node.id} onApprove={onApprove} onReject={onReject} t={t} />
+          </div>
+        )}
+        {node.isHumanInLoop && node.status === NodeStatus.AWAITING_REVIEW && (
+          <div className="mt-4">
+            <ReviewControls stage="content" nodeId={node.id} onApprove={onApprove} onReject={onReject} t={t} />
+          </div>
+        )}
+        </div>
+        
+        {/* Contextual Chat Panel */}
+        {document && allDocuments && apiKey && (
+          <div className="w-96 flex-shrink-0">
+            <ContextualChatPanel
+              document={document}
+              allDocuments={allDocuments}
+              apiKey={apiKey}
+              onChatUpdate={(chatHistory) => onChatUpdate?.(node.id, chatHistory)}
+              className="h-full"
+              t={t}
+            />
+          </div>
+        )}
       </div>
-
-      {node.status === NodeStatus.AWAITING_OUTLINE_REVIEW && (
-        <ReviewControls stage="outline" nodeId={node.id} onApprove={onApprove} onReject={onReject} t={t} />
-      )}
-      {node.isHumanInLoop && node.status === NodeStatus.AWAITING_REVIEW && (
-        <ReviewControls stage="content" nodeId={node.id} onApprove={onApprove} onReject={onReject} t={t} />
-      )}
     </div>
   );
 };
