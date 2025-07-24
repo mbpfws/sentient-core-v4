@@ -101,10 +101,23 @@ const DocumentContentDisplay: React.FC<{
 
   const contentTypeDetected = detectContentType(content);
   
-  // Legacy node-specific detection for backward compatibility
-  const isSvgContent = (nodeId === 'n7' && contentType === 'content' && content.trim().startsWith('<svg')) || contentTypeDetected === 'svg';
-  const isMermaidContent = (nodeId === 'n8' && contentType === 'content') || contentTypeDetected === 'mermaid';
-  const isMarkdownContent = contentTypeDetected === 'markdown';
+  // Enhanced content detection for ALL nodes - support rich content everywhere
+  const isSvgContent = contentTypeDetected === 'svg' || 
+    content.trim().startsWith('<svg') || 
+    (nodeId === 'n7' && contentType === 'content'); // Front-end Mockup Interfaces
+  
+  const isMermaidContent = contentTypeDetected === 'mermaid' || 
+    content.includes('```mermaid') || 
+    (nodeId === 'n4' && contentType === 'content') || // System Architecture
+    (nodeId === 'n8' && contentType === 'content'); // Architectural Visualizer
+  
+  const isMarkdownContent = contentTypeDetected === 'markdown' || 
+    content.includes('#') || 
+    content.includes('**') || 
+    content.includes('```') || 
+    content.includes('|') || // Tables
+    content.includes('[') || // Links
+    true; // Default to Markdown for ALL nodes to support rich formatting
 
   return (
     <div className="mb-6">

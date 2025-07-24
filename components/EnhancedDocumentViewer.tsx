@@ -134,14 +134,27 @@ const ContentSection: React.FC<{
 
   const contentTypeDetected = detectContentType(content);
   
-  // More specific node-based detection with fallback to content detection
-  const isSvgContent = (nodeId === 'n7' && contentType === 'content' && content.trim().startsWith('<svg')) || 
-                       (contentTypeDetected === 'svg');
+  // Enhanced content detection for ALL 10 workflow nodes
+  const isSvgContent = contentTypeDetected === 'svg' || 
+    content.trim().startsWith('<svg') || 
+    (nodeId === 'n7' && contentType === 'content'); // Front-end Mockup Interfaces
   
-  const isMermaidContent = (nodeId === 'n8' && contentType === 'content') || 
-                           (contentTypeDetected === 'mermaid');
+  const isMermaidContent = contentTypeDetected === 'mermaid' || 
+    content.includes('```mermaid') || 
+    (nodeId === 'n4' && contentType === 'content') || // System Architecture
+    (nodeId === 'n8' && contentType === 'content'); // Architectural Visualizer
   
-  const isMarkdownContent = contentTypeDetected === 'markdown' && !isSvgContent && !isMermaidContent;
+  // Enable Markdown rendering for ALL nodes to support rich formatting
+  const isMarkdownContent = !isSvgContent && !isMermaidContent && (
+    contentTypeDetected === 'markdown' || 
+    content.includes('#') || 
+    content.includes('**') || 
+    content.includes('```') || 
+    content.includes('|') || // Tables
+    content.includes('[') || // Links
+    content.includes('\n') || // Multi-line content
+    true // Default to Markdown for ALL nodes to support rich formatting
+  );
 
   const getContentIcon = () => {
     if (isSvgContent) return <ImageIcon />;
