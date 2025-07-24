@@ -1,4 +1,9 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import remarkGfm from 'remark-gfm';
+import MermaidDiagramRenderer from './MermaidDiagramRenderer';
 import { Document, WorkflowGraph, GraphNode, NodeStatus, NodeType, ProjectHierarchy, MindMapNode, DocumentStatus } from '../types';
 import { NODE_STATUS_STYLES } from '../constants';
 import { 
@@ -219,6 +224,165 @@ const EnhancedDocumentExplorer: React.FC<EnhancedDocumentExplorerProps> = ({
     setZoomLevel(1);
   }, []);
 
+  // Rich content rendering function
+  const renderRichContent = useCallback((content: string) => {
+    // Check if content contains Mermaid diagrams
+    const mermaidRegex = /```mermaid\s*\n([\s\S]*?)\n```/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = mermaidRegex.exec(content)) !== null) {
+      // Add text before Mermaid diagram
+      if (match.index > lastIndex) {
+        const textPart = content.slice(lastIndex, match.index);
+        parts.push(
+          <ReactMarkdown
+            key={`text-${lastIndex}`}
+            remarkPlugins={[remarkGfm]}
+            components={{
+              code({ node, inline, className, children, ...props }) {
+                const match = /language-(\w+)/.exec(className || '');
+                const language = match ? match[1] : '';
+                
+                return !inline && language ? (
+                  <SyntaxHighlighter
+                    style={tomorrow}
+                    language={language}
+                    PreTag="div"
+                    className="rounded-lg"
+                    {...props}
+                  >
+                    {String(children).replace(/\n$/, '')}
+                  </SyntaxHighlighter>
+                ) : (
+                  <code className={className} {...props}>
+                    {children}
+                  </code>
+                );
+              },
+              img({ src, alt, ...props }) {
+                if (src?.endsWith('.svg') || src?.startsWith('data:image/svg+xml')) {
+                  return (
+                    <div className="my-4 flex justify-center">
+                      <img src={src} alt={alt} className="max-w-full h-auto" {...props} />
+                    </div>
+                  );
+                }
+                return <img src={src} alt={alt} className="max-w-full h-auto rounded-lg" {...props} />;
+              }
+            }}
+          >
+            {textPart}
+          </ReactMarkdown>
+        );
+      }
+
+      // Add Mermaid diagram
+      const mermaidCode = match[1].trim();
+      parts.push(
+        <div key={`mermaid-${match.index}`} className="my-6">
+          <MermaidDiagramRenderer 
+            code={mermaidCode}
+            className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700"
+          />
+        </div>
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text after last Mermaid diagram
+    if (lastIndex < content.length) {
+      const remainingText = content.slice(lastIndex);
+      parts.push(
+        <ReactMarkdown
+          key={`text-${lastIndex}`}
+          remarkPlugins={[remarkGfm]}
+          components={{
+            code({ node, inline, className, children, ...props }) {
+              const match = /language-(\w+)/.exec(className || '');
+              const language = match ? match[1] : '';
+              
+              return !inline && language ? (
+                <SyntaxHighlighter
+                  style={tomorrow}
+                  language={language}
+                  PreTag="div"
+                  className="rounded-lg"
+                  {...props}
+                >
+                  {String(children).replace(/\n$/, '')}
+                </SyntaxHighlighter>
+              ) : (
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              );
+            },
+            img({ src, alt, ...props }) {
+              if (src?.endsWith('.svg') || src?.startsWith('data:image/svg+xml')) {
+                return (
+                  <div className="my-4 flex justify-center">
+                    <img src={src} alt={alt} className="max-w-full h-auto" {...props} />
+                  </div>
+                );
+              }
+              return <img src={src} alt={alt} className="max-w-full h-auto rounded-lg" {...props} />;
+            }
+          }}
+        >
+          {remainingText}
+        </ReactMarkdown>
+      );
+    }
+
+    // If no Mermaid diagrams found, render as regular Markdown
+    if (parts.length === 0) {
+      return (
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            code({ node, inline, className, children, ...props }) {
+              const match = /language-(\w+)/.exec(className || '');
+              const language = match ? match[1] : '';
+              
+              return !inline && language ? (
+                <SyntaxHighlighter
+                  style={tomorrow}
+                  language={language}
+                  PreTag="div"
+                  className="rounded-lg"
+                  {...props}
+                >
+                  {String(children).replace(/\n$/, '')}
+                </SyntaxHighlighter>
+              ) : (
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              );
+            },
+            img({ src, alt, ...props }) {
+              if (src?.endsWith('.svg') || src?.startsWith('data:image/svg+xml')) {
+                return (
+                  <div className="my-4 flex justify-center">
+                    <img src={src} alt={alt} className="max-w-full h-auto" {...props} />
+                  </div>
+                );
+              }
+              return <img src={src} alt={alt} className="max-w-full h-auto rounded-lg" {...props} />;
+            }
+          }}
+        >
+          {content}
+        </ReactMarkdown>
+      );
+    }
+
+    return <div>{parts}</div>;
+  }, []);
+
   // Render mind map visualization
   const renderMindMapView = () => {
     if (mindMapNodes.length === 0) {
@@ -236,26 +400,45 @@ const EnhancedDocumentExplorer: React.FC<EnhancedDocumentExplorerProps> = ({
           style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }}
         >
           <svg className="w-full h-full">
-            {/* Render connections between nodes */}
-            {mindMapNodes.map(node => 
-              node.childIds.map(childId => {
-                const childNode = mindMapNodes.find(n => n.id === childId);
-                if (!childNode) return null;
-                
-                return (
-                  <line
-                    key={`${node.id}-${childId}`}
-                    x1={node.position.x + node.size.width / 2}
-                    y1={node.position.y + node.size.height / 2}
-                    x2={childNode.position.x + childNode.size.width / 2}
-                    y2={childNode.position.y + childNode.size.height / 2}
-                    stroke="#e5e7eb"
-                    strokeWidth="2"
-                    className="dark:stroke-gray-600"
-                  />
-                );
-              })
-            )}
+            {/* Render connections between workflow nodes */}
+            {workflow?.edges?.map(edge => {
+              const sourceNode = mindMapNodes.find(n => n.id === edge.source);
+              const targetNode = mindMapNodes.find(n => n.id === edge.target);
+              if (!sourceNode || !targetNode) return null;
+              
+              return (
+                <line
+                  key={`${edge.source}-${edge.target}`}
+                  x1={sourceNode.position.x + sourceNode.size.width / 2}
+                  y1={sourceNode.position.y + sourceNode.size.height / 2}
+                  x2={targetNode.position.x + targetNode.size.width / 2}
+                  y2={targetNode.position.y + targetNode.size.height / 2}
+                  stroke="#3b82f6"
+                  strokeWidth="2"
+                  className="dark:stroke-blue-400"
+                  markerEnd="url(#arrowhead)"
+                />
+              );
+            })
+            }
+            
+            {/* Arrow marker definition */}
+            <defs>
+              <marker
+                id="arrowhead"
+                markerWidth="10"
+                markerHeight="7"
+                refX="9"
+                refY="3.5"
+                orient="auto"
+              >
+                <polygon
+                  points="0 0, 10 3.5, 0 7"
+                  fill="#3b82f6"
+                  className="dark:fill-blue-400"
+                />
+              </marker>
+            </defs>
             
             {/* Render nodes */}
             {mindMapNodes.map(node => (
@@ -416,14 +599,14 @@ const EnhancedDocumentExplorer: React.FC<EnhancedDocumentExplorerProps> = ({
                         <h4 className="font-medium text-gray-900 dark:text-white">{doc.title}</h4>
                         {showMetadata && (
                           <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500 dark:text-gray-400">
-                            <span>📊 {doc.metadata.wordCount} words</span>
-                            <span>⏱️ {doc.metadata.estimatedReadTime} min read</span>
+                            <span>📊 {doc.metadata?.wordCount || 0} words</span>
+                            <span>⏱️ {doc.metadata?.estimatedReadTime || 1} min read</span>
                             <span className={`px-2 py-1 rounded-full text-xs ${
-                              doc.metadata.status === 'APPROVED' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
-                              doc.metadata.status === 'IN_REVIEW' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                              (doc.metadata?.status as string) === 'APPROVED' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                              (doc.metadata?.status as string) === 'IN_REVIEW' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
                               'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
                             }`}>
-                              {doc.metadata.status}
+                              {doc.metadata?.status || 'draft'}
                             </span>
                             <span className={`px-2 py-1 rounded-full text-xs ${
                               doc.priority === 'critical' ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' :
@@ -641,9 +824,7 @@ const EnhancedDocumentExplorer: React.FC<EnhancedDocumentExplorerProps> = ({
           <div>
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">📝 Content</h3>
             <div className="prose dark:prose-invert max-w-none">
-              <div className="whitespace-pre-wrap text-gray-700 dark:text-gray-300 leading-relaxed">
-                {selectedDocument.content || 'No content available'}
-              </div>
+              {renderRichContent(selectedDocument.content || 'No content available')}
             </div>
           </div>
 
