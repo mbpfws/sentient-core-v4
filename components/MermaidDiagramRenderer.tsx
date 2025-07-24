@@ -112,9 +112,7 @@ const MermaidDiagramRenderer: React.FC<MermaidDiagramRendererProps> = ({
         titleTopMargin: 25,
         barHeight: 20,
         fontSize: 11,
-        gridLineStartPadding: 35,
-        bottomPadding: 4,
-        rightPadding: 100
+        gridLineStartPadding: 35
       }
     });
   }, []);
@@ -169,6 +167,11 @@ const MermaidDiagramRenderer: React.FC<MermaidDiagramRendererProps> = ({
                 <button 
                   onclick="this.parentElement.style.display='none'" 
                   class="mt-2 px-3 py-1 bg-red-600/20 text-red-300 rounded text-xs hover:bg-red-600/30 transition-colors"
+                  ref={(el) => {
+                    if (el) {
+                      containerRef.current = el;
+                    }
+                  }}
                 >
                   Dismiss
                 </button>
