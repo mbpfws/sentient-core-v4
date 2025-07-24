@@ -311,33 +311,19 @@ const EnhancedDocumentManager: React.FC<EnhancedDocumentManagerProps> = ({
             >
               Clear
             </button>
-          </div>
-          
-          <div className="flex items-center gap-2">
             <select
-              value={exportFormat}
-              onChange={(e) => setExportFormat(e.target.value as 'json' | 'zip')}
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
               className="px-2 py-1 text-xs bg-slate-700 border border-slate-600 text-slate-200 rounded"
             >
-              <option value="zip">ZIP Archive</option>
-              <option value="json">JSON Export</option>
+              <option value={5}>5 per page</option>
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
             </select>
-            
-            <button
-              onClick={exportSelectedDocuments}
-              disabled={selectedDocuments.size === 0}
-              className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded flex items-center gap-1 transition-colors"
-            >
-              <DownloadIcon /> Export
-            </button>
-            
-            <button
-              onClick={deleteSelectedDocuments}
-              disabled={selectedDocuments.size === 0}
-              className="px-3 py-1 text-xs bg-red-600 hover:bg-red-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded flex items-center gap-1 transition-colors"
-            >
-              <TrashIcon /> Delete
-            </button>
           </div>
         </div>
       </div>
