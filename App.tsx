@@ -260,16 +260,50 @@ const App: React.FC = () => {
         return null;
     }, [apiKey, setApiKey]);
 
+    // Load persistent storage on initial load
+    useEffect(() => {
+        const loadStoredData = async () => {
+            try {
+                const result = await storageService.loadAppState();
+                if (result.success && result.data) {
+                    // Merge loaded data with current state
+                    if (result.data.projects && result.data.projects.length > 0) {
+                        dispatch({ type: 'CREATE_PROJECT', payload: { description: 'Loading...' } });
+                        // Replace with loaded projects
+                        result.data.projects.forEach(project => {
+                            dispatch({ type: 'CREATE_PROJECT', payload: { description: project.description } });
+                        });
+                        if (result.data.activeProjectId) {
+                            dispatch({ type: 'SELECT_PROJECT', payload: { projectId: result.data.activeProjectId } });
+                        }
+                    }
+                } else if (result.error) {
+                    setStorageError(result.error);
+                }
+            } catch (error) {
+                setStorageError('Failed to load stored data');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        
+        loadStoredData();
+    }, [storageService]);
+
     // Check for API key on initial load
     useEffect(() => {
-        if (!apiKey) {
+        if (!apiKey && !isLoading) {
             setIsApiKeyModalOpen(true);
         }
-    }, [apiKey]);
+    }, [apiKey, isLoading]);
 
+    // Auto-save state changes with debouncing
     useEffect(() => {
-        setStoredState(state);
-    }, [state, setStoredState]);
+        if (!isLoading) {
+            storageService.debouncedSave(state);
+            setStoredState(state);
+        }
+    }, [state, setStoredState, storageService, isLoading]);
 
     const activeProject = useMemo(() => state.projects.find(p => p.id === state.activeProjectId), [state.projects, state.activeProjectId]);
     
@@ -628,36 +662,20 @@ Question: "${message}"
                                                         });
                                                     }
                                                 }}
-                                                onExportDocuments={(format) => {
-                                                    // Export documents in the specified format
-                                                    if (format === 'json') {
-                                                        const exportData = JSON.stringify(activeProject.documents, null, 2);
-                                                        const blob = new Blob([exportData], { type: 'application/json' });
-                                                        const url = URL.createObjectURL(blob);
-                                                        const a = document.createElement('a');
-                                                        a.href = url;
-                                                        a.download = `${activeProject.description}_documents.json`;
-                                                        a.click();
-                                                        URL.revokeObjectURL(url);
-                                                    } else {
-                                                        // For ZIP format, create individual markdown files
-                                                        import('jszip').then(({ default: JSZip }) => {
-                                                            const zip = new JSZip();
-                                                            activeProject.documents.forEach(doc => {
-                                                                const node = activeProject.workflow.nodes.find(n => n.id === doc.nodeId);
-                                                                const fileName = `${node?.label || doc.nodeId}.md`;
-                                                                const content = `# ${node?.label || 'Document'}\n\n${doc.content || doc.outline || ''}`;
-                                                                zip.file(fileName, content);
-                                                            });
-                                                            zip.generateAsync({ type: 'blob' }).then(blob => {
-                                                                const url = URL.createObjectURL(blob);
-                                                                const a = document.createElement('a');
-                                                                a.href = url;
-                                                                a.download = `${activeProject.description}_documents.zip`;
-                                                                a.click();
-                                                                URL.revokeObjectURL(url);
-                                                            });
-                                                        });
+                                                onExportDocuments={async (format) => {
+                                                    try {
+                                                        const result = await storageService.exportDocuments(activeProject.documents, format);
+                                                        if (!result.success) {
+                                                            setStorageError(`Export failed: ${result.error}`);
+                                                            alert(`Export failed: ${result.error}`);
+                                                        } else {
+                                                            // Clear any previous errors on successful export
+                                                            setStorageError(null);
+                                                        }
+                                                    } catch (error) {
+                                                        const errorMessage = error instanceof Error ? error.message : 'Unknown export error';
+                                                        setStorageError(`Export failed: ${errorMessage}`);
+                                                        alert(`Export failed: ${errorMessage}`);
                                                     }
                                                 }}
                                                 className="h-full"
