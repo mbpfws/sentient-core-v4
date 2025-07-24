@@ -576,8 +576,9 @@ Question: "${message}"
                         <ResizableLayout
                             leftPanel={
                                 <EnhancedDocumentExplorer 
-                                    nodes={activeProject.workflow.nodes}
-                                    edges={activeProject.workflow.edges}
+                                    workflow={activeProject.workflow}
+                                    documents={activeProject.documents}
+                                    projectId={activeProject.id}
                                     onSelectNode={handleSetActiveNode}
                                     activeNodeId={activeProject.activeNodeId}
                                     t={t}

@@ -94,7 +94,7 @@ export class EnhancedDocumentService {
       // Create document nodes for this project
       project.documentIds.forEach((docId, docIndex) => {
         const doc = docMap.get(docId);
-        if (doc) {
+        if (doc && doc.metadata) {
           const angle = (docIndex / project.documentIds.length) * 2 * Math.PI;
           const radius = 120;
           const docNode: MindMapNode = {
@@ -108,11 +108,11 @@ export class EnhancedDocumentService {
             size: { width: 150, height: 60 },
             parentId: project.id,
             childIds: doc.childDocumentIds,
-            metadata: doc.metadata,
+            metadata: doc.metadata || { status: 'draft', priority: 'medium', tags: [], estimatedReadTime: 0 },
             isCollapsed: false,
             style: {
-              backgroundColor: this.getDocumentColor(doc.metadata.status),
-              borderColor: this.darkenColor(this.getDocumentColor(doc.metadata.status)),
+              backgroundColor: this.getDocumentColor(doc.metadata?.status || 'draft'),
+              borderColor: this.darkenColor(this.getDocumentColor(doc.metadata?.status || 'draft')),
               textColor: '#333333'
             }
           };

@@ -52,15 +52,26 @@ type FilterOptions = {
 
 const EnhancedDocumentExplorer: React.FC<EnhancedDocumentExplorerProps> = ({ 
   workflow, 
-  documents, 
+  documents = [], 
   onSelectNode, 
   activeNodeId, 
-  t,
-  className = '',
-  projectId,
-  onDocumentSelect,
-  onStartChat
+  t, 
+  className = '', 
+  projectId, 
+  onDocumentSelect, 
+  onStartChat 
 }) => {
+  // Early return if workflow is not available
+  if (!workflow) {
+    return (
+      <div className={`flex items-center justify-center h-64 text-gray-500 ${className}`}>
+        <div className="text-center">
+          <p>{t?.noWorkflow || 'No workflow available'}</p>
+          <p className="text-sm mt-2">{t?.loadingWorkflow || 'Loading workflow...'}</p>
+        </div>
+      </div>
+    );
+  }
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<FilterOptions>({});
   const [sortOption, setSortOption] = useState<SortOption>('newest');
@@ -84,16 +95,60 @@ const EnhancedDocumentExplorer: React.FC<EnhancedDocumentExplorerProps> = ({
     setMindMapNodes(mindMap);
   }, [documents, projectId]);
 
-  const nodeMap = useMemo(() => new Map(workflow.nodes.map(n => [n.id, n])), [workflow.nodes]);
+  const nodeMap = useMemo(() => new Map((workflow?.nodes || []).map(n => [n.id, n])), [workflow?.nodes]);
   const docMap = useMemo(() => new Map(documents.map(d => [d.nodeId, d])), [documents]);
 
   // Enhanced document filtering and searching
   const filteredDocuments = useMemo(() => {
-    return EnhancedDocumentService.searchDocuments(documents, searchTerm, filters);
-  }, [documents, searchTerm, filters]);
+    if (!documents || documents.length === 0) {
+      return [];
+    }
+    
+    let filtered = documents.filter(doc => {
+      // Search term filtering
+      const matchesSearch = !searchTerm || 
+        doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (doc.content || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (doc.outline || '').toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Status filtering
+      const matchesStatus = !filters.status || 
+        (doc.metadata?.status as string) === filters.status;
+      
+      // Priority filtering
+      const matchesPriority = !filters.priority || 
+        doc.priority === filters.priority;
+      
+      // Category filtering
+      const matchesCategory = !filters.category || 
+        doc.category === filters.category;
+      
+      return matchesSearch && matchesStatus && matchesPriority && matchesCategory;
+    });
+    
+    // Sort documents
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      
+      switch (sortOption) {
+        case 'oldest':
+          return dateA - dateB;
+        case 'az':
+          return a.title.localeCompare(b.title);
+        case 'za':
+          return b.title.localeCompare(a.title);
+        case 'newest':
+        default:
+          return dateB - dateA;
+      }
+    });
+    
+    return filtered;
+  }, [documents, searchTerm, filters, sortOption]);
 
   const filteredAndSortedNodes = useMemo(() => {
-    let nodes = workflow.nodes.filter(node => {
+    let nodes = (workflow?.nodes || []).filter(node => {
       const doc = docMap.get(node.id);
       const matchesSearch = searchTerm === '' || 
         node.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -129,7 +184,7 @@ const EnhancedDocumentExplorer: React.FC<EnhancedDocumentExplorerProps> = ({
     });
 
     return nodes;
-  }, [workflow.nodes, docMap, searchTerm, sortOption]);
+  }, [workflow?.nodes, docMap, searchTerm, sortOption]);
 
   // Handle document selection
   const handleDocumentSelect = useCallback((document: Document) => {
@@ -258,21 +313,21 @@ const EnhancedDocumentExplorer: React.FC<EnhancedDocumentExplorerProps> = ({
             className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow"
             title="Zoom In"
           >
-            <ZoomInIcon className="w-4 h-4" />
+            <ZoomInIcon />
           </button>
           <button
             onClick={handleZoomOut}
             className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow"
             title="Zoom Out"
           >
-            <ZoomOutIcon className="w-4 h-4" />
+            <ZoomOutIcon />
           </button>
           <button
             onClick={handleResetZoom}
             className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow"
             title="Reset Zoom"
           >
-            <RefreshIcon className="w-4 h-4" />
+            <RefreshIcon />
           </button>
         </div>
         
@@ -301,10 +356,14 @@ const EnhancedDocumentExplorer: React.FC<EnhancedDocumentExplorerProps> = ({
 
   // Render hierarchical view
   const renderHierarchicalView = () => {
-    if (projectHierarchy.length === 0) {
+    if (!projectHierarchy || projectHierarchy.length === 0) {
       return (
         <div className="flex items-center justify-center h-64 text-gray-500">
-          {t.noDocuments || 'No documents found'}
+          <div className="text-center">
+            <p className="text-lg mb-2">🌳</p>
+            <p>{t?.noDocuments || 'No documents found'}</p>
+            <p className="text-sm mt-2">{t?.generateDocuments || 'Generate some documents to see the hierarchy'}</p>
+          </div>
         </div>
       );
     }
@@ -422,10 +481,10 @@ const EnhancedDocumentExplorer: React.FC<EnhancedDocumentExplorerProps> = ({
               </p>
               {showMetadata && (
                 <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
-                  <span>📊 {doc.metadata.wordCount} words</span>
-                  <span>⏱️ {doc.metadata.estimatedReadTime} min read</span>
+                  <span>📊 {doc.metadata?.wordCount || 0} words</span>
+                  <span>⏱️ {doc.metadata?.estimatedReadTime || 1} min read</span>
                   <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400">
-                    {doc.category}
+                    {doc.category || 'General'}
                   </span>
                 </div>
               )}
@@ -517,15 +576,121 @@ const EnhancedDocumentExplorer: React.FC<EnhancedDocumentExplorerProps> = ({
     </div>
   );
 
-  return (
-    <div className={`h-full flex flex-col ${className}`}>
-      {renderControls()}
-      
-      <div className="flex-1 overflow-hidden">
-        {viewMode === 'mindmap' && renderMindMapView()}
-        {viewMode === 'hierarchy' && renderHierarchicalView()}
-        {viewMode === 'list' && renderListView()}
+  // Render document content viewer
+  const renderDocumentViewer = () => {
+    if (!selectedDocument) {
+      return (
+        <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+          <div className="text-center">
+            <p className="text-lg mb-2">📄</p>
+            <p>{t?.selectDocument || 'Select a document to view its content'}</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="h-full flex flex-col bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700">
+        {/* Document Header */}
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                {selectedDocument.title}
+              </h2>
+              <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                <span>📊 {selectedDocument.metadata?.wordCount || 0} words</span>
+                <span>⏱️ {selectedDocument.metadata?.estimatedReadTime || 1} min read</span>
+                <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400">
+                  {selectedDocument.category || 'General'}
+                </span>
+                <span className={`px-2 py-1 rounded-full text-xs ${
+                  (selectedDocument.metadata?.status as string) === 'completed' 
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                    : (selectedDocument.metadata?.status as string) === 'in_progress'
+                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                    : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+                }`}>
+                  {selectedDocument.metadata?.status || 'draft'}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => setSelectedDocument(null)}
+              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              title="Close document"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Document Content */}
+        <div className="flex-1 overflow-auto p-4">
+          {selectedDocument.outline && (
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">📋 Outline</h3>
+              <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
+                  {selectedDocument.outline}
+                </pre>
+              </div>
+            </div>
+          )}
+          
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">📝 Content</h3>
+            <div className="prose dark:prose-invert max-w-none">
+              <div className="whitespace-pre-wrap text-gray-700 dark:text-gray-300 leading-relaxed">
+                {selectedDocument.content || 'No content available'}
+              </div>
+            </div>
+          </div>
+
+          {selectedDocument.sources && selectedDocument.sources.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">🔗 Sources</h3>
+              <div className="space-y-2">
+                {selectedDocument.sources.map((source, index) => (
+                  <div key={index} className="flex items-center space-x-2 text-sm">
+                    <span className="text-blue-500">•</span>
+                    <a 
+                      href={source.uri} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      {source.title}
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+    );
+  };
+
+  return (
+    <div className={`h-full flex ${className}`}>
+      {/* Left Panel - Document Explorer */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {renderControls()}
+        
+        <div className="flex-1 overflow-hidden">
+          {viewMode === 'mindmap' && renderMindMapView()}
+          {viewMode === 'hierarchy' && renderHierarchicalView()}
+          {viewMode === 'list' && renderListView()}
+        </div>
+      </div>
+      
+      {/* Right Panel - Document Viewer */}
+      {selectedDocument && (
+        <div className="w-1/2 min-w-0">
+          {renderDocumentViewer()}
+        </div>
+      )}
     </div>
   );
 };

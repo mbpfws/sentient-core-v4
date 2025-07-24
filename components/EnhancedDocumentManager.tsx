@@ -57,6 +57,9 @@ const EnhancedDocumentManager: React.FC<EnhancedDocumentManagerProps> = ({
 
   // Filter and sort documents
   const filteredAndSortedDocuments = useMemo(() => {
+    if (!documents || !Array.isArray(documents)) {
+      return [];
+    }
     let filtered = documents.filter(doc => {
       const nodeInfo = getNodeInfo(doc.nodeId);
       const searchMatch = !searchTerm || 
