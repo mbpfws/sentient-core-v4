@@ -3,6 +3,7 @@ import { AppState, ProjectState, WorkflowStatus, NodeStatus, Document, GraphNode
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { INITIAL_WORKFLOW_GRAPH, VIETNAMESE_WORKFLOW_GRAPH } from './constants';
 import { GeminiService } from './services/geminiService';
+import { PersistentStorageService } from './services/persistentStorage';
 import { locales } from './locales';
 import Header from './components/Header';
 import ProjectInput from './components/ProjectInput';
@@ -234,6 +235,11 @@ const App: React.FC = () => {
     const [state, dispatch] = useReducer(appReducer, storedState);
     const [viewMode, setViewMode] = useState<'workflow' | 'explorer' | 'tester'>('workflow');
     const [isCreatingProject, setIsCreatingProject] = useState(false);
+    
+    // Persistent Storage Management
+    const [storageError, setStorageError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const storageService = useMemo(() => PersistentStorageService.getInstance(), []);
     
     // API Key Management State
     const [apiKey, setApiKey] = useLocalStorage<string>('gemini_api_key', '');
