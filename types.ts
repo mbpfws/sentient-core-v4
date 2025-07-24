@@ -62,8 +62,18 @@ export interface Document {
   content: string;
   sources?: { uri: string; title: string; }[];
   createdAt: string;
+  updatedAt: string;
   version: number;
   chatHistory: ChatMessage[];
+  metadata: DocumentMetadata;
+  parentDocumentId?: string;
+  childDocumentIds: string[];
+  relatedDocumentIds: string[];
+  tags: string[];
+  category: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  isApproved: boolean;
+  approvalStage: 'outline' | 'content' | 'final' | 'approved';
 }
 
 export enum WorkflowStatus {
@@ -90,7 +100,63 @@ export interface ProjectState {
   feedbackHistory: Record<string, string[]>;
 }
 
+export interface DocumentMetadata {
+  wordCount: number;
+  estimatedReadTime: number;
+  lastModifiedBy: string;
+  reviewers: string[];
+  status: DocumentStatus;
+  complexity: 'simple' | 'moderate' | 'complex' | 'expert';
+  completionPercentage: number;
+}
+
+export enum DocumentStatus {
+  DRAFT = 'DRAFT',
+  IN_REVIEW = 'IN_REVIEW',
+  APPROVED = 'APPROVED',
+  PUBLISHED = 'PUBLISHED',
+  ARCHIVED = 'ARCHIVED'
+}
+
+export interface ProjectHierarchy {
+  id: string;
+  name: string;
+  description: string;
+  parentId?: string;
+  childIds: string[];
+  documentIds: string[];
+  position: { x: number; y: number };
+  isExpanded: boolean;
+  color: string;
+  icon: string;
+}
+
+export interface MindMapNode {
+  id: string;
+  label: string;
+  type: 'project' | 'document' | 'category';
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  parentId?: string;
+  childIds: string[];
+  metadata: any;
+  isCollapsed: boolean;
+  style: {
+    backgroundColor: string;
+    borderColor: string;
+    textColor: string;
+  };
+}
+
 export interface AppState {
     projects: ProjectState[];
     activeProjectId: string | null;
+    projectHierarchy: ProjectHierarchy[];
+    documentCategories: string[];
+    globalSettings: {
+      theme: 'light' | 'dark' | 'auto';
+      language: Language;
+      autoSave: boolean;
+      defaultView: 'graph' | 'list' | 'grid';
+    };
 }
